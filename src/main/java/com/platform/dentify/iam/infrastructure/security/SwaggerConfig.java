@@ -19,9 +19,9 @@ public class SwaggerConfig {
                 .addSecurityItem(new SecurityRequirement().addList("Bearer"))
                 .components(new io.swagger.v3.oas.models.Components()
                         .addSecuritySchemes("Bearer", new SecurityScheme()
-                                .type(SecurityScheme.Type.APIKEY)
-                                .in(SecurityScheme.In.HEADER)
-                                .name("Authorization")
+                                .type(SecurityScheme.Type.HTTP)
+                                .scheme("bearer")
+                                .bearerFormat("JWT")
                                 .description("JWT Authorization header using the Bearer scheme")));
     }
 }
