@@ -9,7 +9,8 @@ public class CreateAppointmentCommandFromResourceAssembler {
                 resource.appointmentDate(),
                 resource.reason(),
                 resource.duration(),
-                resource.patientId()
+                resource.patientId(),
+                resource.treatmentId()
         );
     }
 }

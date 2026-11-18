@@ -6,8 +6,19 @@ import com.platform.dentify.patientattention.interfaces.rest.dtos.UpdatePatientR
 public class UpdatePatientCommandFromResourceAssembler {
 
     public static UpdatePatientCommand toCommandFromResource(UpdatePatientResource resource, Long id) {
-        return new UpdatePatientCommand(id, resource.dni(), resource.firstName(),
-                resource.lastName(), resource.email(), resource.homeAddress(),
-                resource.birthday());
+        return new UpdatePatientCommand(
+                id,
+                resource.dni(),
+                resource.firstName(),
+                resource.lastName(),
+                resource.email(),
+                resource.homeAddress(),
+                resource.birthday(),
+                resource.phone(),
+                resource.allergies(),
+                resource.systemicConditions(),
+                resource.emergencyContactName(),
+                resource.emergencyContactPhone()
+        );
     }
 }

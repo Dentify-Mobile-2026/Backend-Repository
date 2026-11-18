@@ -107,17 +107,23 @@ Una vez levantado el servidor:
   * `PUT /api/v1/profile/update-password` - Cambiar contraseña.
 * **Pacientes (`Bearer <token>`):**
   * `GET /api/v1/patients` - Lista de pacientes del doctor.
-  * `POST /api/v1/patients` - Crear paciente (DNI de exactamente 8 dígitos numéricos, nombre, apellido, email, dirección, fecha de nacimiento pasada/actual).
+  * `POST /api/v1/patients` - Crear paciente (DNI de 8 dígitos, nombre, apellido, email, dirección, fecha de nacimiento, teléfono, alergias, condiciones sistémicas y contacto de emergencia).
   * `GET /api/v1/patients/{id}` - Detalle de paciente.
   * `PUT /api/v1/patients/{id}` - Actualizar paciente.
   * `DELETE /api/v1/patients/{id}` - Eliminar paciente.
   * `GET /api/v1/patients/{patientId}/medical-histories` - Historiales médicos del paciente.
   * `POST /api/v1/patients/{patientId}/medical-histories` - Agregar entrada al historial médico.
+* **Catálogo de Tratamientos Dentales (`Bearer <token>`):**
+  * `GET /api/v1/treatments` - Listar tratamientos del catálogo (`TreatmentCategory`, precio y duración estimada).
+  * `POST /api/v1/treatments` - Registrar nuevo tratamiento dental.
+  * `PUT /api/v1/treatments/{id}` - Actualizar tratamiento.
+  * `DELETE /api/v1/treatments/{id}` - Eliminar tratamiento.
 * **Citas (`Bearer <token>`):**
   * `GET /api/v1/appointments` - Lista de citas ordenadas por fecha.
-  * `POST /api/v1/appointments` - Agendar cita (valida automáticamente que no exista solapamiento horario; si hay conflicto retorna `409 Conflict`).
-  * `PUT /api/v1/appointments/{id}` - Modificar cita.
-  * `DELETE /api/v1/appointments/{id}` - Cancelar cita.
+  * `POST /api/v1/appointments` - Agendar cita (permite vincular un `treatmentId` del catálogo y valida que no exista solapamiento con citas activas).
+  * `PUT /api/v1/appointments/{id}` - Reprogramar cita.
+  * `PUT /api/v1/appointments/{id}/status` - Actualizar estado de la cita (`SCHEDULED`, `CONFIRMED`, `IN_PROGRESS`, `COMPLETED`, `CANCELLED`, `NO_SHOW`) y registrar notas de evolución clínica (`clinicalNotes`).
+  * `DELETE /api/v1/appointments/{id}` - Cancelar/eliminar cita.
 * **Inventario (`Bearer <token>`):**
   * `GET /api/v1/items` - Listar insumos.
   * `POST /api/v1/items` - Registrar insumo (requiere categoría válida del enum).

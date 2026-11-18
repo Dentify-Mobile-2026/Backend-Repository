@@ -3,7 +3,13 @@ package com.platform.dentify.patientattention.domain.model.commands;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 
-public record CreateAppointmentCommand(LocalDateTime _appointmentDate, String _reason, LocalTime _duration, Long patientId) {
+public record CreateAppointmentCommand(
+        LocalDateTime _appointmentDate,
+        String _reason,
+        LocalTime _duration,
+        Long patientId,
+        Long treatmentId
+) {
     public CreateAppointmentCommand {
         if (_appointmentDate == null) {
             throw new NullPointerException("appointmentDate");
@@ -17,6 +23,9 @@ public record CreateAppointmentCommand(LocalDateTime _appointmentDate, String _r
         if (patientId == null) {
             throw new NullPointerException("patientId");
         }
+    }
 
+    public CreateAppointmentCommand(LocalDateTime _appointmentDate, String _reason, LocalTime _duration, Long patientId) {
+        this(_appointmentDate, _reason, _duration, patientId, null);
     }
 }

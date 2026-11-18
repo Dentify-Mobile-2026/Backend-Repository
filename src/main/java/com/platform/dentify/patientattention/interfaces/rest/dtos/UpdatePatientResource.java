@@ -5,9 +5,19 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.LocalDate;
 
-public record UpdatePatientResource(String dni, String firstName, String lastName, String email,
-                                    String homeAddress,
-                                    @Schema(type = "date", format = "date", example = "YY-MM-DD")
-                                    @JsonFormat(pattern = "yyyy-MM-dd")
-                                    LocalDate birthday) {
+public record UpdatePatientResource(
+        String dni,
+        String firstName,
+        String lastName,
+        String email,
+        String homeAddress,
+        @Schema(type = "date", format = "date", example = "YYYY-MM-DD")
+        @JsonFormat(pattern = "yyyy-MM-dd")
+        LocalDate birthday,
+        String phone,
+        String allergies,
+        String systemicConditions,
+        String emergencyContactName,
+        String emergencyContactPhone
+) {
 }

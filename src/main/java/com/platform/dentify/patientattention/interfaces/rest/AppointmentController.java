@@ -11,9 +11,11 @@ import com.platform.dentify.patientattention.domain.services.AppointmentQuerySer
 import com.platform.dentify.patientattention.interfaces.rest.assemblers.AppointmentResourceFromEntityAssembler;
 import com.platform.dentify.patientattention.interfaces.rest.assemblers.CreateAppointmentCommandFromResourceAssembler;
 import com.platform.dentify.patientattention.interfaces.rest.assemblers.UpdateAppointmentCommandFromResourceAssembler;
+import com.platform.dentify.patientattention.interfaces.rest.assemblers.UpdateAppointmentStatusCommandFromResourceAssembler;
 import com.platform.dentify.patientattention.interfaces.rest.dtos.AppointmentResource;
 import com.platform.dentify.patientattention.interfaces.rest.dtos.CreateAppointmentResource;
 import com.platform.dentify.patientattention.interfaces.rest.dtos.UpdateAppointmentResource;
+import com.platform.dentify.patientattention.interfaces.rest.dtos.UpdateAppointmentStatusResource;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -32,6 +34,7 @@ import java.util.Map;
 public class AppointmentController {
     private final AppointmentQueryService appointmentQueryService;
     private final AppointmentCommandService appointmentCommandService;
+
     public AppointmentController(AppointmentQueryService appointmentQueryService, AppointmentCommandService appointmentCommandService) {
         this.appointmentQueryService = appointmentQueryService;
         this.appointmentCommandService = appointmentCommandService;
@@ -76,7 +79,6 @@ public class AppointmentController {
         return ResponseEntity.ok(resources);
     }
 
-
     @GetMapping("/{patientId}")
     @Operation(summary = "Get all appointments of patient from the authenticated user", description = "Returns all appointments linked to an specific patient from the current user")
     @ApiResponses(value = {
@@ -88,12 +90,10 @@ public class AppointmentController {
 
         if (appointments.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-
         }
 
         var resources = appointments.stream().map(AppointmentResourceFromEntityAssembler::toResourceFromEntity).toList();
         return ResponseEntity.ok(resources);
-
     }
 
     @PostMapping
@@ -103,7 +103,7 @@ public class AppointmentController {
             @ApiResponse(responseCode = "400", description = "appointment not created"),
             @ApiResponse(responseCode = "409", description = "The time overlaps with another appointment")
     })
-    public ResponseEntity<?> createAppointment(@RequestBody CreateAppointmentResource resource){
+    public ResponseEntity<?> createAppointment(@RequestBody CreateAppointmentResource resource) {
         try {
             CreateAppointmentCommand command = CreateAppointmentCommandFromResourceAssembler.toCommandFromResource(resource);
             var result = appointmentCommandService.handle(command);
@@ -118,9 +118,8 @@ public class AppointmentController {
 
         } catch (AppointmentConflictException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", e.getMessage()));
-        } catch (Exception E){
+        } catch (Exception E) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Error: " + E.getMessage());
-
         }
     }
 
@@ -153,6 +152,31 @@ public class AppointmentController {
         }
     }
 
+    @RequestMapping(value = "/{appointmentId}/status", method = {RequestMethod.PATCH, RequestMethod.PUT})
+    @Operation(summary = "Update appointment status and clinical notes", description = "Changes the lifecycle status of an appointment and optionally records clinical notes")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Appointment status updated"),
+            @ApiResponse(responseCode = "400", description = "Invalid status"),
+            @ApiResponse(responseCode = "404", description = "Appointment not found")
+    })
+    public ResponseEntity<?> updateAppointmentStatus(
+            @PathVariable Long appointmentId,
+            @RequestBody UpdateAppointmentStatusResource resource
+    ) {
+        try {
+            var command = UpdateAppointmentStatusCommandFromResourceAssembler.toCommandFromResource(appointmentId, resource);
+            var result = appointmentCommandService.handle(command);
+
+            if (result.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Appointment not found"));
+            }
+
+            return ResponseEntity.ok(AppointmentResourceFromEntityAssembler.toResourceFromEntity(result.get()));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", e.getMessage()));
+        }
+    }
+
     @DeleteMapping("/{appointmentId}")
     @Operation(summary = "Delete an appointment", description = "Deletes a specific appointment belonging to the current user")
     @ApiResponses(value = {
@@ -168,11 +192,6 @@ public class AppointmentController {
         } catch (Exception e) {
             System.out.print(e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", "An unexpected error occurred"));
-
         }
     }
-
-
-
-
 }

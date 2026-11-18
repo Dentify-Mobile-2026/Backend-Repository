@@ -14,7 +14,6 @@ import java.time.LocalDate;
 import java.time.Period;
 import java.util.List;
 
-
 @Entity
 @Getter
 @Setter
@@ -37,6 +36,15 @@ public class Patient extends AuditableAbstractAggregateRoot<Patient> {
     @Embedded
     private HomeAddress homeAddress;
 
+    @Embedded
+    private PhoneNumber phone;
+
+    @Embedded
+    private MedicalAlerts medicalAlerts;
+
+    @Embedded
+    private EmergencyContact emergencyContact;
+
     @ManyToOne
     @JoinColumn(name = "user_id")
     private User user;
@@ -49,17 +57,19 @@ public class Patient extends AuditableAbstractAggregateRoot<Patient> {
 
     public Patient() {}
 
-    public int GetAge(){
+    public int GetAge() {
         return Period.between(birthday.birthday(), LocalDate.now()).getYears();
     }
 
-    public Patient (CreatePatientCommand command) {
+    public Patient(CreatePatientCommand command) {
         this.dni = new Dni(command.dni());
         this.name = new PersonName(command.firstName(), command.lastName());
         this.email = new EmailAddress(command.email());
         this.birthday = new Birthday(command.birthday());
         this.homeAddress = new HomeAddress(command.homeAddress());
-
+        this.phone = new PhoneNumber(command.phone());
+        this.medicalAlerts = new MedicalAlerts(command.allergies(), command.systemicConditions());
+        this.emergencyContact = new EmergencyContact(command.emergencyContactName(), command.emergencyContactPhone());
     }
 
     public void update(UpdatePatientCommand command) {
@@ -68,13 +78,8 @@ public class Patient extends AuditableAbstractAggregateRoot<Patient> {
         this.email = new EmailAddress(command.email());
         this.birthday = new Birthday(command.birthday());
         this.homeAddress = new HomeAddress(command.homeAddress());
+        this.phone = new PhoneNumber(command.phone());
+        this.medicalAlerts = new MedicalAlerts(command.allergies(), command.systemicConditions());
+        this.emergencyContact = new EmergencyContact(command.emergencyContactName(), command.emergencyContactPhone());
     }
-
-
-
-
-
-
-
-
 }

@@ -2,13 +2,20 @@ package com.platform.dentify.patientattention.domain.model.commands;
 
 import java.time.LocalDate;
 
-public record UpdatePatientCommand(Long id,
-                                   String dni,
-                                   String firstName,
-                                   String lastName,
-                                   String email,
-                                   String homeAddress,
-                                   LocalDate birthday) {
+public record UpdatePatientCommand(
+        Long id,
+        String dni,
+        String firstName,
+        String lastName,
+        String email,
+        String homeAddress,
+        LocalDate birthday,
+        String phone,
+        String allergies,
+        String systemicConditions,
+        String emergencyContactName,
+        String emergencyContactPhone
+) {
 
     public UpdatePatientCommand {
         if (id == null || id <= 0) {
