@@ -29,4 +29,4 @@ docker build -t dentify-api .    # imagen para despliegue
 
 Una cita no puede solaparse con otra del mismo profesional. Dos citas seguidas (una termina cuando empieza la otra) sí son válidas. Si hay solapamiento, `POST /api/v1/appointments` y `PUT /api/v1/appointments/{id}` responden **409 Conflict**.
 
-Ver `NOTICE.md` para el origen del proyecto y los créditos.
+
