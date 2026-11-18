@@ -11,6 +11,7 @@ import lombok.Setter;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 
@@ -52,5 +53,21 @@ public class Appointment extends AuditableAbstractAggregateRoot<Appointment>  {
     }
 
     public Appointment(){}
+
+    /** Convierte la duración almacenada como hora (HH:mm) en una Duration. */
+    public static Duration toDuration(LocalTime duration) {
+        return Duration.between(LocalTime.MIDNIGHT, duration);
+    }
+
+    /**
+     * Indica si el intervalo [start, start + duration) se solapa con esta cita.
+     * Dos citas con la misma hora de inicio siempre se consideran en conflicto.
+     */
+    public boolean overlapsWith(LocalDateTime start, LocalTime duration) {
+        LocalDateTime thisEnd = appointmentDate.plus(toDuration(this.duration));
+        LocalDateTime otherEnd = start.plus(toDuration(duration));
+        return appointmentDate.equals(start)
+                || (start.isBefore(thisEnd) && appointmentDate.isBefore(otherEnd));
+    }
 
 }
