@@ -1,32 +1,139 @@
-# Dentify · Backend
+# Dentify · Backend API REST
 
-API REST de Dentify: gestión de citas, pacientes, historias clínicas, inventario y pagos para consultorios dentales.
+API REST de **Dentify**: Plataforma integral para la gestión de consultorios dentales (atención al paciente, historias clínicas, agenda de citas, control de inventario y facturación).
 
-**Tecnología:** Java 17, Spring Boot 3.4.4, Spring Security con JWT, JPA/Hibernate, MySQL, Swagger (springdoc). Arquitectura DDD con los contextos IAM, atención al paciente, inventario y facturación.
+**Tecnologías:**
+- Java 17
+- Spring Boot 3.4.4
+- Spring Security con JWT & BCrypt
+- JPA / Hibernate
+- MySQL 8.0
+- OpenAPI / Swagger (springdoc-openapi)
+- Arquitectura guiada por el dominio (DDD): contextos IAM, Patient Attention, Inventory e Invoices.
 
-## Variables de entorno
+---
 
-| Variable | Descripción |
-|----------|-------------|
-| `DB_URL` | URL JDBC de MySQL, por ejemplo `jdbc:mysql://host:3306/dentify?sslMode=REQUIRED` |
-| `DB_USERNAME` | Usuario de la base de datos |
-| `DB_PASSWORD` | Contraseña de la base de datos |
-| `JWT_SECRET` | Secreto para firmar los tokens (mínimo 32 caracteres) |
-| `PORT` | Puerto HTTP (por defecto 8080) |
+## 🚀 Requisitos Previos
 
-Hay un ejemplo en `.env.example`. Nunca subas valores reales al repositorio.
+1. **Java JDK 17** instalado y configurado en el `PATH` (`java -version`).
+2. **MySQL Server 8.0** en ejecución local o remoto en el puerto 3306.
+3. No requiere Maven instalado previamente (se incluye el wrapper `mvnw` y `mvnw.cmd`).
 
-## Ejecutar y probar
+---
 
+## 🗄️ Configuración de la Base de Datos (MySQL)
+
+1. Conéctate a tu servidor MySQL local:
+   ```sql
+   mysql -u root -p
+   ```
+2. Crea la base de datos `dentify`:
+   ```sql
+   CREATE DATABASE IF NOT EXISTS dentify CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+   USE dentify;
+   ```
+3. *(Recomendado)* Sembrar los métodos de pago iniciales para el módulo de facturación:
+   ```sql
+   INSERT INTO payment_method (name, description, created_at, updated_at) VALUES 
+   ('Efectivo', 'Pago en efectivo', NOW(), NOW()),
+   ('Tarjeta de Credito', 'Pago con tarjeta de credito', NOW(), NOW()),
+   ('Tarjeta de Debito', 'Pago con tarjeta de debito', NOW(), NOW()),
+   ('Transferencia', 'Transferencia bancaria / Yape / Plin', NOW(), NOW());
+   ```
+
+---
+
+## ⚙️ Variables de Entorno y Configuración
+
+El archivo `src/main/resources/application.properties` ya incluye valores por defecto listos para desarrollo local:
+
+| Variable | Valor por defecto | Descripción |
+|---|---|---|
+| `DB_URL` | `jdbc:mysql://localhost:3306/dentify?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true` | Cadena de conexión JDBC |
+| `DB_USERNAME` | `root` | Usuario de MySQL |
+| `DB_PASSWORD` | `root` | Contraseña de MySQL |
+| `JWT_SECRET` | `404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970` | Clave secreta HMAC para tokens JWT |
+| `PORT` | `8080` | Puerto HTTP del servidor |
+
+Si necesitas usar credenciales distintas a las por defecto (`root`/`root`), puedes definirlas en tu terminal o crear un archivo `.env`:
 ```bash
-./mvnw test                      # pruebas unitarias (no necesitan base de datos)
-export DB_URL=... DB_USERNAME=... DB_PASSWORD=... JWT_SECRET=...
-./mvnw spring-boot:run           # Swagger en /swagger-ui/index.html, salud en /health
-docker build -t dentify-api .    # imagen para despliegue
+# Windows PowerShell:
+$env:DB_USERNAME="tu_usuario"
+$env:DB_PASSWORD="tu_password"
+
+# Linux / macOS:
+export DB_USERNAME=tu_usuario
+export DB_PASSWORD=tu_password
 ```
 
-## Regla de citas
+---
 
-Una cita no puede solaparse con otra del mismo profesional. Dos citas seguidas (una termina cuando empieza la otra) sí son válidas. Si hay solapamiento, `POST /api/v1/appointments` y `PUT /api/v1/appointments/{id}` responden **409 Conflict**.
+## ▶️ Ejecución del Backend
 
+### En Windows (CMD o PowerShell):
+```powershell
+cd Backend
+.\mvnw.cmd spring-boot:run
+```
 
+### En Linux o macOS:
+```bash
+cd Backend
+chmod +x ./mvnw
+./mvnw spring-boot:run
+```
+
+El servidor iniciará en: **`http://localhost:8080`**
+
+---
+
+## 📖 Endpoints y Documentación
+
+Una vez levantado el servidor:
+- **Swagger UI (Documentación interactiva):**  
+  [http://localhost:8080/swagger-ui/index.html](http://localhost:8080/swagger-ui/index.html)
+- **OpenAPI JSON:**  
+  [http://localhost:8080/v3/api-docs](http://localhost:8080/v3/api-docs)
+- **Health Check:**  
+  [http://localhost:8080/health](http://localhost:8080/health) `-> {"status":"UP"}`
+
+### Endpoints Principales:
+* **Autenticación (Públicos):**
+  * `POST /api/auth/register` - Registro de odontólogo/usuario.
+  * `POST /api/auth/login` - Login y obtención del JWT `accessToken`.
+* **Perfil (`Bearer <token>`):**
+  * `GET /api/v1/profile` - Obtener datos del usuario autenticado.
+  * `PUT /api/v1/profile/update-information` - Actualizar información personal.
+  * `PUT /api/v1/profile/update-password` - Cambiar contraseña.
+* **Pacientes (`Bearer <token>`):**
+  * `GET /api/v1/patients` - Lista de pacientes del doctor.
+  * `POST /api/v1/patients` - Crear paciente (DNI de exactamente 8 dígitos numéricos, nombre, apellido, email, dirección, fecha de nacimiento pasada/actual).
+  * `GET /api/v1/patients/{id}` - Detalle de paciente.
+  * `PUT /api/v1/patients/{id}` - Actualizar paciente.
+  * `DELETE /api/v1/patients/{id}` - Eliminar paciente.
+  * `GET /api/v1/patients/{patientId}/medical-histories` - Historiales médicos del paciente.
+  * `POST /api/v1/patients/{patientId}/medical-histories` - Agregar entrada al historial médico.
+* **Citas (`Bearer <token>`):**
+  * `GET /api/v1/appointments` - Lista de citas ordenadas por fecha.
+  * `POST /api/v1/appointments` - Agendar cita (valida automáticamente que no exista solapamiento horario; si hay conflicto retorna `409 Conflict`).
+  * `PUT /api/v1/appointments/{id}` - Modificar cita.
+  * `DELETE /api/v1/appointments/{id}` - Cancelar cita.
+* **Inventario (`Bearer <token>`):**
+  * `GET /api/v1/items` - Listar insumos.
+  * `POST /api/v1/items` - Registrar insumo (requiere categoría válida del enum).
+  * `PUT /api/v1/items/{id}` - Actualizar stock o precio.
+  * `DELETE /api/v1/items/{id}` - Eliminar insumo.
+* **Facturación (`Bearer <token>`):**
+  * `GET /api/v1/invoices` - Listar comprobantes de pago.
+  * `POST /api/v1/invoices` - Crear factura vinculada a una cita y método de pago.
+* **Dashboard (`Bearer <token>`):**
+  * `GET /api/v1/dashboard` - Métricas de stock bajo, pagos recientes y próximas citas.
+
+---
+
+## 🧪 Pruebas Automatizadas
+
+Para correr la suite de pruebas unitarias:
+```bash
+./mvnw test
+```
