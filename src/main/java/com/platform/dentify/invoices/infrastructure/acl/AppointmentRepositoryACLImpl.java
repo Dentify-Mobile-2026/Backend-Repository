@@ -4,6 +4,7 @@ import com.platform.dentify.iam.infrastructure.security.AuthenticatedUserProvide
 import com.platform.dentify.invoices.application.external.AppointmentACL;
 import com.platform.dentify.invoices.application.external.ExternalAppointmentDTO;
 import com.platform.dentify.patientattention.domain.model.aggregates.Appointment;
+import com.platform.dentify.patientattention.domain.model.valueobjects.AppointmentStatus;
 import com.platform.dentify.patientattention.infrastructure.repositories.AppointmentRepository;
 import org.springframework.stereotype.Service;
 
@@ -36,6 +37,7 @@ public class AppointmentRepositoryACLImpl implements AppointmentACL {
     public void markAppointmentAsCompleted(Long appointmentId) {
         Appointment appointment = appointmentRepository.findById(appointmentId).orElseThrow(()-> new RuntimeException("no appointment found for the current appointment"));
         appointment.setCompleted(true);
+        appointment.setStatus(AppointmentStatus.COMPLETED);
         appointmentRepository.save(appointment);
     }
 
