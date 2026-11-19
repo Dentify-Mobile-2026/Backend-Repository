@@ -3,7 +3,6 @@ package com.platform.dentify.iam.infrastructure.jwt;
 
 import com.platform.dentify.iam.domain.services.JwtService;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -17,9 +16,6 @@ import java.util.Date;
 
 @Service
 public class JwtServiceImpl implements JwtService {
-
-    @Value("${security.jwt.secret}")
-    private String secretKey;
 
     private final SecretKey key;
 
