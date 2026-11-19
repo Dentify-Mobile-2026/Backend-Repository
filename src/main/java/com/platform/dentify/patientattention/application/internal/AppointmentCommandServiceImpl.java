@@ -108,6 +108,12 @@ public class AppointmentCommandServiceImpl implements AppointmentCommandService 
 
         Appointment appointment = appointmentOpt.get();
         AppointmentStatus newStatus = AppointmentStatus.valueOf(command.status().trim().toUpperCase());
+        if (newStatus == AppointmentStatus.IN_PROGRESS
+                && appointment.getAppointmentDate() != null
+                && LocalDateTime.now().isBefore(appointment.getAppointmentDate())) {
+            throw new IllegalArgumentException(
+                    "La cita no puede pasar a 'En Atención' antes de su hora programada.");
+        }
         appointment.updateStatus(newStatus, command.clinicalNotes());
         appointmentRepository.save(appointment);
 

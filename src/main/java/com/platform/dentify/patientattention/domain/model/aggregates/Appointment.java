@@ -68,6 +68,9 @@ public class Appointment extends AuditableAbstractAggregateRoot<Appointment> {
     public Appointment() {}
 
     public void updateStatus(AppointmentStatus newStatus, String notes) {
+        if (newStatus == AppointmentStatus.CONFIRMED) {
+            newStatus = AppointmentStatus.SCHEDULED;
+        }
         this.status = newStatus;
         this.completed = (newStatus == AppointmentStatus.COMPLETED);
         if (notes != null) {
@@ -75,13 +78,36 @@ public class Appointment extends AuditableAbstractAggregateRoot<Appointment> {
         }
     }
 
+    /**
+     * Resuelve el estado clínico real de la cita de forma automática según la ventana horaria:
+     * - Si está cerrada (COMPLETED, CANCELLED, NO_SHOW), se respeta ese estado final.
+     * - Si está reservada (SCHEDULED/CONFIRMED) y la hora actual está dentro de [inicio, fin),
+     *   pasa automáticamente a IN_PROGRESS ("En Atención").
+     * - No puede iniciarse antes de su hora programada para no desfasar ni afectar el resto de la agenda.
+     */
     public AppointmentStatus resolveStatus() {
-        if (this.status != null) {
+        if (Boolean.TRUE.equals(this.completed) || this.status == AppointmentStatus.COMPLETED) {
+            return AppointmentStatus.COMPLETED;
+        }
+        if (this.status == AppointmentStatus.CANCELLED || this.status == AppointmentStatus.NO_SHOW) {
             return this.status;
         }
-        return Boolean.TRUE.equals(this.completed)
-                ? AppointmentStatus.COMPLETED
-                : AppointmentStatus.SCHEDULED;
+
+        if (this.appointmentDate != null && this.duration != null) {
+            LocalDateTime now = LocalDateTime.now();
+            LocalDateTime end = this.appointmentDate.plus(toDuration(this.duration));
+            if (!now.isBefore(this.appointmentDate) && now.isBefore(end)) {
+                return AppointmentStatus.IN_PROGRESS;
+            }
+            if (now.isBefore(this.appointmentDate)) {
+                return AppointmentStatus.SCHEDULED;
+            }
+        }
+
+        if (this.status == AppointmentStatus.IN_PROGRESS) {
+            return AppointmentStatus.IN_PROGRESS;
+        }
+        return AppointmentStatus.SCHEDULED;
     }
 
     /** Convierte la duración almacenada como hora (HH:mm) en una Duration. */
