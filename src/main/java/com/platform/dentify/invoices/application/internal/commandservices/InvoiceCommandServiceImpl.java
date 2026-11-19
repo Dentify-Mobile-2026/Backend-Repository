@@ -11,6 +11,7 @@ import com.platform.dentify.invoices.infrastructure.repositories.PaymentMethodRe
 import com.platform.dentify.patientattention.domain.model.aggregates.Appointment;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import jakarta.transaction.Transactional;
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 
@@ -35,6 +36,7 @@ public class InvoiceCommandServiceImpl implements InvoiceCommandService {
 
 
     @Override
+    @Transactional
     public Optional<Invoice> handle(CreateInvoiceCommand command) {
         Long userId = authenticatedUserProvider.getCurrentUserId();
         PaymentMethod paymentMethod = paymentMethodRepository.findPaymentMethodById(command.paymentMethodId())

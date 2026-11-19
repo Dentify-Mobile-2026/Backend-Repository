@@ -7,6 +7,7 @@ import com.platform.dentify.inventory.domain.services.ItemCommandService;
 import com.platform.dentify.inventory.domain.services.LogEntryCommandService;
 import com.platform.dentify.inventory.infrastructure.persistence.jpa.repositories.ItemRepository;
 import com.platform.dentify.inventory.infrastructure.persistence.jpa.repositories.LogEntryRepository;
+import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -25,6 +26,7 @@ public class LogEntryCommandServiceImpl implements LogEntryCommandService {
     }
 
     @Override
+    @Transactional
     public Long handle(CreateLogEntryCommand command) {
         var item = itemRepository.findById(command.itemId());
 
