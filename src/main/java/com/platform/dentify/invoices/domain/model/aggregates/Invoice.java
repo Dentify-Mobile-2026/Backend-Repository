@@ -1,13 +1,12 @@
 package com.platform.dentify.invoices.domain.model.aggregates;
 
+import com.platform.dentify.invoices.domain.exceptions.InvoiceDeletionNotAllowedException;
 import com.platform.dentify.invoices.domain.model.commands.CreateInvoiceCommand;
 import com.platform.dentify.invoices.domain.model.entities.PaymentMethod;
 import com.platform.dentify.patientattention.domain.model.aggregates.Appointment;
 import com.platform.dentify.shared.domain.model.aggregates.AuditableAbstractAggregateRoot;
 import jakarta.persistence.*;
 import lombok.Getter;
-import org.hibernate.annotations.OnDelete;
-import org.hibernate.annotations.OnDeleteAction;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -27,9 +26,13 @@ public class Invoice extends AuditableAbstractAggregateRoot<Invoice> {
     @Column(name = "total_amount", precision = 10, scale = 2)
     private BigDecimal totalAmount;
 
+    /**
+     * Sin {@code @OnDelete(CASCADE)}: en esquemas nuevos la FK se crea sin cascada (RESTRICT).
+     * Las bases existentes se corrigen con la migración manual
+     * {@code db/migration-manual/V2026_11_20__invoice_fk_restrict.sql}.
+     */
     @OneToOne
-    @JoinColumn(name = "appointment_id")
-    @OnDelete(action = OnDeleteAction.CASCADE)
+    @JoinColumn(name = "appointment_id", foreignKey = @ForeignKey(name = "fk_invoice_appointment"))
     private Appointment appointment;
 
     @ManyToOne
@@ -54,6 +57,16 @@ public class Invoice extends AuditableAbstractAggregateRoot<Invoice> {
             return totalAmount;
         }
         return amount == null ? null : BigDecimal.valueOf(amount).setScale(2, RoundingMode.HALF_UP);
+    }
+
+    /**
+     * Bloquea cualquier eliminación vía JPA, incluidas las cascadas desde
+     * {@code Appointment.invoice} y {@code Patient.appointments} (CascadeType.ALL), antes de
+     * que se ejecute SQL alguno. Los borrados directos por SQL los bloquea la FK RESTRICT.
+     */
+    @PreRemove
+    void preventRemoval() {
+        throw new InvoiceDeletionNotAllowedException(getId());
     }
 
     public void setAppointment(Appointment appointment) {
