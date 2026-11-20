@@ -6,7 +6,17 @@ import com.platform.dentify.inventory.interfaces.rest.dtos.LogEntryResource;
 public class LogEntryResourceFromEntityAssembler {
 
     public static LogEntryResource toResourceFromEntity(LogEntry entity) {
-        return new LogEntryResource(entity.getId(), entity.getItem().getId(), entity.getConsumedQuantity(),
-                entity.getInvoice().getId());
+        Long invoiceId = entity.getInvoice() != null ? entity.getInvoice().getId() : null;
+        return new LogEntryResource(
+                entity.getId(),
+                entity.getItem().getId(),
+                entity.getItem().getName(),
+                entity.getPreviousStock(),
+                entity.getNewStock(),
+                entity.getConsumedQuantity(),
+                entity.getReason(),
+                invoiceId,
+                entity.getCreatedAt()
+        );
     }
 }

@@ -1,13 +1,10 @@
 package com.platform.dentify.inventory.interfaces.rest;
 
 import com.platform.dentify.inventory.domain.model.commands.CreateLogEntryCommand;
-import com.platform.dentify.inventory.domain.model.queries.GetAllItemsByUserIdQuery;
 import com.platform.dentify.inventory.domain.model.queries.GetAllLogEntriesByUserIdQuery;
 import com.platform.dentify.inventory.domain.services.LogEntryCommandService;
 import com.platform.dentify.inventory.domain.services.LogEntryQueryService;
-import com.platform.dentify.inventory.interfaces.rest.assemblers.ItemResourceFromEntityAssembler;
 import com.platform.dentify.inventory.interfaces.rest.dtos.CreateLogEntryResource;
-import com.platform.dentify.inventory.interfaces.rest.dtos.ItemResource;
 import com.platform.dentify.inventory.interfaces.rest.dtos.LogEntryResource;
 import com.platform.dentify.inventory.interfaces.rest.assemblers.CreateLogEntryCommandFromResourceAssembler;
 import com.platform.dentify.inventory.interfaces.rest.assemblers.LogEntryResourceFromEntityAssembler;
@@ -63,25 +60,20 @@ public class LogEntryController {
 
 
 
-//    @GetMapping
-//    @Operation(summary = "Get all log entries by user ID", description = "Get all log entries by user ID")
-//    @ApiResponses(value = {
-//            @ApiResponse(responseCode = "200", description = "Log entries found"),
-//            @ApiResponse(responseCode = "404", description = "Log entries not found")
-//    })
-//    public ResponseEntity<List<LogEntryResource>> getAllLogEntries() {
-//        var logEntries = logEntryQueryService.handle(new GetAllLogEntriesByUserIdQuery());
-//
-//        if (logEntries.isEmpty()) {
-//            return ResponseEntity.notFound().build();
-//        }
-//
-//        var resources = logEntries.stream()
-//                .map(LogEntryResourceFromEntityAssembler:: toResourceFromEntity)
-//                .toList();
-//
-//        return ResponseEntity.ok(resources);
-//    }
+    @GetMapping
+    @Operation(summary = "Get all log entries by user ID", description = "Get all stock log entries for the authenticated user")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Log entries retrieved")
+    })
+    public ResponseEntity<List<LogEntryResource>> getAllLogEntries() {
+        var logEntries = logEntryQueryService.handle(new GetAllLogEntriesByUserIdQuery());
+
+        var resources = logEntries.stream()
+                .map(LogEntryResourceFromEntityAssembler::toResourceFromEntity)
+                .toList();
+
+        return ResponseEntity.ok(resources);
+    }
 
 
 }

@@ -1,5 +1,17 @@
 package com.platform.dentify.inventory.interfaces.rest.dtos;
 
-public record LogEntryResource(Long id, Long itemId, int consumedQuantity, Long invoiceId) {
+import java.time.LocalDateTime;
+
+public record LogEntryResource(
+        Long id,
+        Long itemId,
+        String itemName,
+        int previousStock,
+        int newStock,
+        int consumedQuantity,
+        String reason,
+        Long invoiceId,
+        LocalDateTime createdAt
+) {
 
 }
