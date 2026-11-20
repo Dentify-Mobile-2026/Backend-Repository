@@ -43,8 +43,11 @@ public class InvoiceSchemaVerifier implements ApplicationRunner {
                AND k.COLUMN_NAME = ?
             """;
 
-    /** Relación que debe impedir el borrado de la fila referenciada mientras existan hijos. */
-    public record ProtectedForeignKey(String table, String column, String referencedTable) {
+    /**
+     * Relación que debe impedir el borrado de la fila referenciada mientras existan hijos.
+     * {@code remedy} indica qué hacer si la regla es peligrosa.
+     */
+    public record ProtectedForeignKey(String table, String column, String referencedTable, String remedy) {
         @Override
         public String toString() {
             return table + "." + column + " -> " + referencedTable;
@@ -56,7 +59,12 @@ public class InvoiceSchemaVerifier implements ApplicationRunner {
     public record Finding(ProtectedForeignKey foreignKey, List<ForeignKeyRule> rules, boolean safe) {}
 
     static final List<ProtectedForeignKey> PROTECTED_FOREIGN_KEYS = List.of(
-            new ProtectedForeignKey("invoice", "appointment_id", "appointment")
+            // Borrar una cita o un paciente no debe eliminar sus comprobantes.
+            new ProtectedForeignKey("invoice", "appointment_id", "appointment",
+                    "Ejecute la migración manual " + MIGRATION_SCRIPT),
+            // Borrar un comprobante no debe eliminar sus abonos (tabla nueva: Hibernate la crea sin cascada).
+            new ProtectedForeignKey("invoice_payment", "invoice_id", "invoice",
+                    "Revise la FK fk_invoice_payment_invoice: debe ser ON DELETE RESTRICT o NO ACTION")
     );
 
     private final JdbcTemplate jdbcTemplate;
@@ -78,9 +86,9 @@ public class InvoiceSchemaVerifier implements ApplicationRunner {
                 if (finding.safe()) {
                     log.info("Protección financiera OK: {} {}", finding.foreignKey(), finding.rules());
                 } else {
-                    log.error("PROTECCIÓN FINANCIERA INCOMPLETA: {} tiene reglas {}. Borrar una cita o un paciente "
-                                    + "puede eliminar comprobantes. Ejecute la migración manual {}",
-                            finding.foreignKey(), finding.rules(), MIGRATION_SCRIPT);
+                    log.error("PROTECCIÓN FINANCIERA INCOMPLETA: {} tiene reglas {}. Un borrado puede eliminar "
+                                    + "registros financieros en cascada. {}",
+                            finding.foreignKey(), finding.rules(), finding.foreignKey().remedy());
                 }
             }
             return findings;

@@ -34,7 +34,7 @@ class InvoiceSchemaVerifierTest {
 
         var findings = verifier.verify();
 
-        assertEquals(1, findings.size());
+        assertEquals(InvoiceSchemaVerifier.PROTECTED_FOREIGN_KEYS.size(), findings.size());
         assertFalse(findings.get(0).safe());
     }
 

@@ -139,8 +139,9 @@ class InvoicesNewSchemaIntegrationTest {
     void newSchemaHasNoCascadeOnInvoiceAppointment() {
         var findings = schemaVerifier.verify();
 
-        assertEquals(1, findings.size());
-        assertTrue(findings.get(0).safe(), () -> "Reglas encontradas: " + findings.get(0).rules());
+        assertFalse(findings.isEmpty());
+        findings.forEach(finding ->
+                assertTrue(finding.safe(), () -> finding.foreignKey() + " tiene reglas " + finding.rules()));
     }
 
     @Test
