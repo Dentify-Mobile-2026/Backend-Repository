@@ -45,6 +45,37 @@ SELECT id, amount FROM invoice WHERE ROUND(amount, 2) <> amount; -- históricos 
 - La columna `amount` (double) se mantiene por compatibilidad.
 - **Fechas:** `invoice.created_at` es la fecha de auditoría y se interpreta en la zona horaria de la JVM que la escribió (tanto en registros nuevos como históricos). Los informes del dashboard se calculan en `America/Lima`.
 
+**Pagos parciales (abonos):**
+- **Abono inicial.** `POST /api/v1/invoices` admite un `initialPayment` opcional:
+  - si no se envía, se cobra el total;
+  - con `0`, el comprobante queda PENDING y no se exige método de pago;
+  - si es mayor que el total, se responde 400.
+- **Registrar un abono.** `POST /api/v1/invoices/{invoiceId}/payments` recibe `{amount, paymentMethodId, notes?, requestId}`.
+  - Respuestas: 201 cuando se crea; 200 cuando es una repetición idéntica (mismo `requestId` y mismos datos); 409 si el abono supera el saldo o si el `requestId` se reutilizó con otros datos.
+  - Los abonos concurrentes sobre un mismo comprobante se serializan con `SELECT … FOR UPDATE`.
+- **Consultas.**
+  - `GET /api/v1/invoices/{invoiceId}/payments` devuelve los abonos con `paidAt` en UTC.
+  - `GET /api/v1/invoices?status=PENDING|PARTIAL|PAID` filtra por estado.
+- **Datos guardados.**
+  - Los abonos van en `invoice_payment`: monto `DECIMAL(10,2)`, `paid_at` en UTC y `request_id` único.
+  - Son inmutables: su FK hacia `invoice` no tiene cascada.
+- **Comprobantes anteriores a los abonos** (`status` NULL).
+  - Se tratan como cobrados en su totalidad en su fecha de emisión, igual que antes. No se les crean abonos ni se modifican sus filas.
+  - La API los marca con `legacy: true` y rechaza abonos nuevos sobre ellos.
+- **Dashboard** (`/api/v1/dashboard/analytics`, en `America/Lima`; los campos JSON no cambian):
+  - `totalCollected`: dinero cobrado en el mes, según la fecha real de cada abono.
+  - `pendingBalance`: cuentas por cobrar al corte (ahora, o al cierre de un mes pasado), de todos los meses.
+  - `collectionRate`: lo cobrado de lo generado en el mes (comprobantes emitidos en el mes más citas atendidas sin comprobante).
+  - `recentPayments`: los últimos abonos individuales.
+
+Verificación de comprobantes y abonos:
+```sql
+SELECT COUNT(*) FROM invoice WHERE status IS NULL;                                       -- históricos (constante)
+SELECT i.id FROM invoice i JOIN invoice_payment p ON p.invoice_id = i.id WHERE i.status IS NULL; -- debe ser 0
+SELECT i.id, i.total_amount, SUM(p.amount) AS pagado FROM invoice i JOIN invoice_payment p ON p.invoice_id = i.id
+ GROUP BY i.id, i.total_amount HAVING SUM(p.amount) > i.total_amount;                     -- sobrepagos: debe ser 0
+```
+
 ### 3. Configuración (`application.properties`)
 La aplicación ya cuenta con valores predeterminados locales:
 - **Usuario:** `root`
