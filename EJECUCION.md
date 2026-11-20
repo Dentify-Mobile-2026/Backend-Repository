@@ -17,16 +17,33 @@ Abre tu consola o cliente de MySQL (MySQL Workbench, MySQL Shell o CLI) y ejecut
 
 ```sql
 CREATE DATABASE IF NOT EXISTS dentify CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE dentify;
-
--- Métodos de pago base para el módulo de facturación:
-INSERT INTO payment_method (name, description, created_at, updated_at) VALUES 
-('Efectivo', 'Pago en efectivo', NOW(), NOW()),
-('Tarjeta de Credito', 'Pago con tarjeta de credito', NOW(), NOW()),
-('Tarjeta de Debito', 'Pago con tarjeta de debito', NOW(), NOW()),
-('Transferencia', 'Transferencia bancaria / Yape / Plin', NOW(), NOW());
 ```
-*(Nota: Las tablas y nuevas columnas de la Fase 1 se crean y actualizan automáticamente gracias a `spring.jpa.hibernate.ddl-auto=update`).*
+*(Nota: Las tablas y nuevas columnas se crean y actualizan automáticamente gracias a `spring.jpa.hibernate.ddl-auto=update`).*
+
+**Métodos de pago:** se crean solos al arrancar (`PaymentMethodDataSeeder`). Solo se insertan los que falten (Efectivo, Tarjeta de Credito, Tarjeta de Debito, Transferencia), así que ya no hace falta el INSERT manual. Los ids no son fijos: el front los obtiene con `GET /api/v1/payment-methods`.
+
+**Bases existentes (creadas antes del Sprint 1 del módulo financiero):** en ellas, `invoice.appointment_id` tiene `ON DELETE CASCADE`, de modo que borrar una cita o un paciente borraba sus comprobantes. Hay que ejecutar **una vez, a mano**, la migración controlada:
+```bash
+mysql -u root -p dentify < src/main/resources/db/migration-manual/V2026_11_20__invoice_fk_restrict.sql
+```
+- Es idempotente: si ya está aplicada, no hace cambios.
+- No modifica datos: deja la FK en `ON DELETE RESTRICT`.
+- Necesita privilegio `ALTER`.
+- El backend no ejecuta DDL por su cuenta. Al arrancar, `InvoiceSchemaVerifier` solo comprueba la regla y registra un `ERROR` mientras falte la migración.
+
+Verificación antes y después de aplicarla:
+```sql
+SELECT rc.CONSTRAINT_NAME, rc.DELETE_RULE FROM information_schema.REFERENTIAL_CONSTRAINTS rc
+ WHERE rc.CONSTRAINT_SCHEMA = DATABASE() AND rc.TABLE_NAME = 'invoice' AND rc.REFERENCED_TABLE_NAME = 'appointment';
+-- esperado después: una sola fila con RESTRICT (o NO ACTION en bases nuevas)
+SELECT id, amount FROM invoice WHERE ROUND(amount, 2) <> amount; -- históricos con más de 2 decimales
+```
+
+**Comprobantes:**
+- Crear un comprobante **no cambia el estado clínico de la cita**. La cita se marca como "Atendida" solo desde el flujo de estados de la agenda.
+- Los montos se validan como decimales exactos: mayores que cero, con máximo 2 decimales y hasta 99 999 999.99. Se guardan en `invoice.total_amount DECIMAL(10,2)`.
+- La columna `amount` (double) se mantiene por compatibilidad.
+- **Fechas:** `invoice.created_at` es la fecha de auditoría y se interpreta en la zona horaria de la JVM que la escribió (tanto en registros nuevos como históricos). Los informes del dashboard se calculan en `America/Lima`.
 
 ### 3. Configuración (`application.properties`)
 La aplicación ya cuenta con valores predeterminados locales:
