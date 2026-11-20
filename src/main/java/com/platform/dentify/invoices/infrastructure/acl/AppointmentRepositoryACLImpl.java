@@ -3,6 +3,7 @@ package com.platform.dentify.invoices.infrastructure.acl;
 import com.platform.dentify.iam.infrastructure.security.AuthenticatedUserProvider;
 import com.platform.dentify.invoices.application.external.AppointmentACL;
 import com.platform.dentify.invoices.application.external.ExternalAppointmentDTO;
+import com.platform.dentify.invoices.domain.exceptions.AppointmentNotFoundException;
 import com.platform.dentify.patientattention.domain.model.aggregates.Appointment;
 import com.platform.dentify.patientattention.infrastructure.repositories.AppointmentRepository;
 import org.springframework.stereotype.Service;
@@ -29,7 +30,7 @@ public class AppointmentRepositoryACLImpl implements AppointmentACL {
     @Override
     public ExternalAppointmentDTO getAppointmentById(Long appointmentId) {
         Long userId = authenticatedUserProvider.getCurrentUserId();
-        return findByIdAndUserId(appointmentId, userId).orElseThrow(()-> new RuntimeException("no appointment found for the current user with id: " + appointmentId));
+        return findByIdAndUserId(appointmentId, userId).orElseThrow(() -> new AppointmentNotFoundException(appointmentId));
     }
 
     private ExternalAppointmentDTO mapToDTO(Appointment appointment) {
