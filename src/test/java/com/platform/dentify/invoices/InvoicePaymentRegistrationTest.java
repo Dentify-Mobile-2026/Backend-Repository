@@ -92,7 +92,7 @@ class InvoicePaymentRegistrationTest {
             assertEquals(NOW, payment.getPaidAt());
             assertEquals("req-1", payment.getRequestId());
             verify(invoiceRepository).findByIdAndOwnerForUpdate(INVOICE_ID, USER_ID);
-            verify(invoiceRepository).saveAndFlush(invoice);
+            verify(paymentRepository).saveAndFlush(payment);
         }
 
         @Test
@@ -100,7 +100,7 @@ class InvoicePaymentRegistrationTest {
             when(invoiceRepository.findByIdAndOwnerForUpdate(INVOICE_ID, USER_ID)).thenReturn(Optional.empty());
 
             assertThrows(InvoiceNotFoundException.class, () -> handler.register(command("10", 1, null, "r"), USER_ID));
-            verify(invoiceRepository, never()).saveAndFlush(any());
+            verify(paymentRepository, never()).saveAndFlush(any());
         }
 
         @Test
@@ -110,7 +110,7 @@ class InvoicePaymentRegistrationTest {
 
             assertThrows(InvoiceOverpaymentException.class,
                     () -> handler.register(command("300.01", 1, null, "r"), USER_ID));
-            verify(invoiceRepository, never()).saveAndFlush(any());
+            verify(paymentRepository, never()).saveAndFlush(any());
             assertTrue(invoice.getPayments().isEmpty());
         }
 
@@ -125,7 +125,7 @@ class InvoicePaymentRegistrationTest {
 
             assertFalse(result.created());
             assertEquals(1, invoice.getPayments().size());
-            verify(invoiceRepository, never()).saveAndFlush(any());
+            verify(paymentRepository, never()).saveAndFlush(any());
         }
 
         @Test
@@ -137,7 +137,7 @@ class InvoicePaymentRegistrationTest {
 
             assertThrows(IdempotencyKeyConflictException.class,
                     () -> handler.register(command("40", 1, null, "req-1"), USER_ID));
-            verify(invoiceRepository, never()).saveAndFlush(any());
+            verify(paymentRepository, never()).saveAndFlush(any());
         }
     }
 

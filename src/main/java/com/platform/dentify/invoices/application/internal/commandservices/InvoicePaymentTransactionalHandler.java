@@ -65,8 +65,12 @@ public class InvoicePaymentTransactionalHandler {
                 .orElseThrow(() -> new IllegalArgumentException(
                         "El método de pago " + command.paymentMethodId() + " no existe"));
 
-        invoice.registerPayment(command.amount(), method, clock.instant(), command.notes(), command.requestId());
-        invoiceRepository.saveAndFlush(invoice);
+        InvoicePayment payment = invoice.registerPayment(command.amount(), method, clock.instant(),
+                command.notes(), command.requestId());
+        // El comprobante ya está gestionado (cargado con bloqueo): se persiste el abono nuevo de
+        // forma explícita y el cambio de estado del comprobante se guarda por dirty checking.
+        // Un merge del comprobante no insertaría correctamente el abono transitorio.
+        invoicePaymentRepository.saveAndFlush(payment);
         return new PaymentRegistrationResult(invoice, true);
     }
 
