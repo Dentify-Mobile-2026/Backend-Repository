@@ -4,6 +4,7 @@ import com.platform.dentify.invoices.domain.model.aggregates.Invoice;
 import com.platform.dentify.invoices.domain.model.commands.CreateInvoiceCommand;
 import com.platform.dentify.invoices.domain.model.queries.GetAllInvoicesByUserIdQuery;
 import com.platform.dentify.invoices.domain.model.queries.GetInvoiceByAppointmentIdQuery;
+import com.platform.dentify.invoices.domain.model.valueobjects.InvoiceStatus;
 import com.platform.dentify.invoices.domain.services.InvoiceCommandService;
 import com.platform.dentify.invoices.domain.services.InvoiceQueryService;
 import com.platform.dentify.invoices.interfaces.rest.assemblers.CreateInvoiceCommandFromResourceAssembler;
@@ -72,10 +73,14 @@ public class InvoicesController {
     }
 
     @GetMapping("")
-    @Operation(summary = "Get all invoices for current user", description = "Returns all invoices linked to the current user")
-    public ResponseEntity<List<InvoiceResource>> getAllInvoicesForCurrentUser() {
+    @Operation(summary = "Get all invoices for current user",
+            description = "Returns all invoices linked to the current user, optionally filtered by billing status "
+                    + "(PENDING, PARTIAL, PAID). Historical invoices count as PAID.")
+    public ResponseEntity<List<InvoiceResource>> getAllInvoicesForCurrentUser(
+            @RequestParam(name = "status", required = false) InvoiceStatus status) {
         List<Invoice> invoices = invoiceQueryService.handle(new GetAllInvoicesByUserIdQuery());
         var resources = invoices.stream()
+                .filter(invoice -> status == null || invoice.getStatus() == status)
                 .map(InvoiceResourceFromEntityAssembler::toResourceFromEntity)
                 .toList();
         return ResponseEntity.ok(resources);
