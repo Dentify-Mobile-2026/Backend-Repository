@@ -62,8 +62,6 @@ public class InvoiceCommandServiceImpl implements InvoiceCommandService {
 
         try {
             Invoice savedInvoice = invoiceRepository.save(invoice);
-            appointmentACL.markAppointmentAsCompleted(command.appointmentId());
-
             return Optional.of(savedInvoice);
         } catch (DataAccessException ex) {
             throw new RuntimeException("Error saving invoice", ex);
