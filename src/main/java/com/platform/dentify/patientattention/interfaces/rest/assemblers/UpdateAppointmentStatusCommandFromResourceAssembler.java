@@ -8,7 +8,8 @@ public class UpdateAppointmentStatusCommandFromResourceAssembler {
         return new UpdateAppointmentStatusCommand(
                 id,
                 resource.status(),
-                resource.clinicalNotes()
+                resource.clinicalNotes(),
+                Boolean.TRUE.equals(resource.recordInMedicalHistory())
         );
     }
 }
