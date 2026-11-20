@@ -8,6 +8,7 @@ import java.util.List;
 
 @Repository
 public interface MedicalHistoryRepository extends JpaRepository<MedicalHistory, Long> {
+    boolean existsBySourceAppointmentId(Long appointmentId);
     List<MedicalHistory> findAllByPatientId(Long patientId);
 
 }
