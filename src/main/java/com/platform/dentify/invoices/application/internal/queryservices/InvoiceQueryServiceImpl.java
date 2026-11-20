@@ -9,11 +9,15 @@ import com.platform.dentify.invoices.domain.model.queries.GetAllInvoicesByUserId
 import com.platform.dentify.invoices.domain.model.queries.GetInvoiceByAppointmentIdQuery;
 import com.platform.dentify.invoices.domain.model.queries.GetInvoicePaymentsQuery;
 import com.platform.dentify.invoices.domain.model.queries.GetLast5Invoices;
+import com.platform.dentify.invoices.domain.model.queries.GetRecentCollectionsQuery;
+import com.platform.dentify.invoices.domain.model.valueobjects.InvoiceCollection;
 import com.platform.dentify.invoices.domain.services.InvoiceQueryService;
 import com.platform.dentify.invoices.infrastructure.repositories.InvoicePaymentRepository;
 import com.platform.dentify.invoices.infrastructure.repositories.InvoiceRepository;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 
@@ -61,5 +65,19 @@ public class InvoiceQueryServiceImpl implements InvoiceQueryService {
         invoiceRepository.findByIdAndAppointment_Patient_User_Id(query.invoiceId(), userId)
                 .orElseThrow(() -> new InvoiceNotFoundException(query.invoiceId()));
         return invoicePaymentRepository.findByInvoice_IdOrderByPaidAtAscIdAsc(query.invoiceId());
+    }
+
+    @Override
+    public List<InvoiceCollection> handle(GetRecentCollectionsQuery query) {
+        List<InvoiceCollection> collections = new ArrayList<>();
+        invoicePaymentRepository.findTop5ByInvoice_Appointment_Patient_User_IdOrderByPaidAtDesc(query.userId())
+                .forEach(payment -> collections.add(
+                        new InvoiceCollection(payment.getInvoice().getId(), payment.getAmount(), payment.getPaidAt())));
+        invoiceRepository.findTop5ByStatusIsNullAndAppointment_Patient_User_IdOrderByCreatedAtDesc(query.userId())
+                .forEach(invoice -> collections.addAll(invoice.getCollections()));
+        return collections.stream()
+                .sorted(Comparator.comparing(InvoiceCollection::collectedAt).reversed())
+                .limit(query.limit())
+                .toList();
     }
 }
