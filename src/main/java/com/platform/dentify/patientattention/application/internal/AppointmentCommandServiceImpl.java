@@ -12,6 +12,9 @@ import com.platform.dentify.patientattention.domain.services.AppointmentCommandS
 import com.platform.dentify.patientattention.infrastructure.repositories.AppointmentRepository;
 import com.platform.dentify.patientattention.infrastructure.repositories.PatientRepository;
 import com.platform.dentify.patientattention.infrastructure.repositories.TreatmentRepository;
+import com.platform.dentify.patientattention.infrastructure.repositories.MedicalHistoryRepository;
+import com.platform.dentify.patientattention.domain.model.entities.MedicalHistory;
+import com.platform.dentify.patientattention.domain.model.commands.CreateMedicalHistoryCommand;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -27,18 +30,21 @@ public class AppointmentCommandServiceImpl implements AppointmentCommandService 
     private final AuthenticatedUserProvider authenticatedUserProvider;
     private final AppointmentRepository appointmentRepository;
     private final TreatmentRepository treatmentRepository;
+    private final MedicalHistoryRepository medicalHistoryRepository;
 
     @Autowired
     public AppointmentCommandServiceImpl(
             PatientRepository patientRepository,
             AuthenticatedUserProvider authenticatedUserProvider,
             AppointmentRepository appointmentRepository,
-            TreatmentRepository treatmentRepository
+            TreatmentRepository treatmentRepository,
+            MedicalHistoryRepository medicalHistoryRepository
     ) {
         this.patientRepository = patientRepository;
         this.authenticatedUserProvider = authenticatedUserProvider;
         this.appointmentRepository = appointmentRepository;
         this.treatmentRepository = treatmentRepository;
+        this.medicalHistoryRepository = medicalHistoryRepository;
     }
 
     public AppointmentCommandServiceImpl(
@@ -46,7 +52,7 @@ public class AppointmentCommandServiceImpl implements AppointmentCommandService 
             AuthenticatedUserProvider authenticatedUserProvider,
             AppointmentRepository appointmentRepository
     ) {
-        this(patientRepository, authenticatedUserProvider, appointmentRepository, null);
+        this(patientRepository, authenticatedUserProvider, appointmentRepository, null, null);
     }
 
     @Override
@@ -101,7 +107,7 @@ public class AppointmentCommandServiceImpl implements AppointmentCommandService 
     public Optional<Appointment> handle(UpdateAppointmentStatusCommand command) {
         Long userId = authenticatedUserProvider.getCurrentUserId();
 
-        var appointmentOpt = appointmentRepository.findByIdAndPatient_User_Id(command.id(), userId);
+        var appointmentOpt = appointmentRepository.findForStatusUpdate(command.id(), userId);
         if (appointmentOpt.isEmpty()) {
             return Optional.empty();
         }
@@ -114,7 +120,24 @@ public class AppointmentCommandServiceImpl implements AppointmentCommandService 
             throw new IllegalArgumentException(
                     "La cita no puede pasar a 'En Atención' antes de su hora programada.");
         }
+        if (command.recordInMedicalHistory() && newStatus != AppointmentStatus.COMPLETED) {
+            throw new IllegalArgumentException("Medical history can only be recorded for completed appointments");
+        }
+        if (command.recordInMedicalHistory() && appointment.getTreatment() == null) {
+            throw new IllegalArgumentException("Link a treatment before recording the appointment in medical history");
+        }
         appointment.updateStatus(newStatus, command.clinicalNotes());
+        if (command.recordInMedicalHistory()
+                && !medicalHistoryRepository.existsBySourceAppointmentId(appointment.getId())) {
+            var history = new MedicalHistory(new CreateMedicalHistoryCommand(
+                    appointment.getTreatment().getName(),
+                    appointment.getClinicalNotes() == null ? "" : appointment.getClinicalNotes(), "", "No registrada",
+                    appointment.getPatient().getId()));
+            history.setPatient(appointment.getPatient());
+            history.setSourceAppointmentId(appointment.getId());
+            history.setAppointmentDate(appointment.getAppointmentDate());
+            medicalHistoryRepository.save(history);
+        }
         appointmentRepository.save(appointment);
 
         return Optional.of(appointment);

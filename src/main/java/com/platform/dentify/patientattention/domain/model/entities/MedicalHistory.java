@@ -20,8 +20,15 @@ public class MedicalHistory extends AuditableModel {
     @Size(max = 250)
     private String description;
 
-    @Size(max = 250)
+    @Size(max = 500)
+    @Column(length = 500)
     private String record;
+
+    // Kept as a scalar so deleting an appointment does not erase its clinical record.
+    @Column(unique = true)
+    private Long sourceAppointmentId;
+
+    private java.time.LocalDateTime appointmentDate;
 
     @Embedded
     private Diagnosis diagnosis;
