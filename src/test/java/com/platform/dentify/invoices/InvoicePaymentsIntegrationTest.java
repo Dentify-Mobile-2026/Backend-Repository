@@ -396,6 +396,62 @@ class InvoicePaymentsIntegrationTest {
     }
 
     @Test
+    void clinicsCannotSeeOrTouchEachOthersBilling() throws Exception {
+        long cash = methodId("Efectivo");
+        // Clínica A: una cita sin facturar y un comprobante con un abono.
+        String tokenA = token;
+        long freeAppointmentA = insertAppointment(patientId);
+        long appointmentA = insertAppointment(patientId);
+        long invoiceA = createInvoice(appointmentA, "500.00", "200.00", cash).get("id").asLong();
+        String requestIdA = UUID.randomUUID().toString();
+        assertEquals(HttpStatus.CREATED, pay(invoiceA, "50.00", cash, requestIdA).getStatusCode());
+        String rowA = invoiceRow(invoiceA);
+
+        // Clínica B, con su propio paciente y comprobante.
+        String usernameB = "b" + UUID.randomUUID().toString().substring(0, 12);
+        jdbc.update("INSERT INTO user (created_at, updated_at, password, username, company_name) VALUES (NOW(6), NOW(6), 'x', ?, 'Clinica B')", usernameB);
+        long userB = jdbc.queryForObject("SELECT id FROM user WHERE username = ?", Long.class, usernameB);
+        token = jwtService.generateAccessToken(String.valueOf(userB));
+        long invoiceB = createInvoice(insertAppointment(insertPatient(userB)), "80.00", "0", null).get("id").asLong();
+
+        // B no ve nada de A en listados, filtros ni dashboard.
+        for (String path : List.of("/api/v1/invoices", "/api/v1/invoices?status=PARTIAL", "/api/v1/invoices?status=PENDING")) {
+            JsonNode list = json(get(path));
+            for (JsonNode item : list) {
+                assertEquals(invoiceB, item.get("id").asLong(), () -> path + " expuso un comprobante ajeno: " + list);
+            }
+        }
+        assertEquals(0.0, json(get("/api/v1/dashboard/analytics")).get("financials").get("totalCollected").asDouble());
+        assertEquals(HttpStatus.NOT_FOUND, get("/api/v1/invoices/" + appointmentA).getStatusCode());
+
+        // B no puede registrar abonos, leerlos ni facturar citas de A.
+        var foreignPayment = pay(invoiceA, "10.00", cash, UUID.randomUUID().toString());
+        assertEquals(HttpStatus.NOT_FOUND, foreignPayment.getStatusCode());
+        assertTrue(json(foreignPayment).has("error"), foreignPayment.getBody());
+        assertFalse(json(foreignPayment).has("totalAmount"), foreignPayment.getBody());
+        assertEquals(HttpStatus.NOT_FOUND, get("/api/v1/invoices/" + invoiceA + "/payments").getStatusCode());
+        var foreignInvoice = post("/api/v1/invoices",
+                "{\"appointmentId\": " + freeAppointmentA + ", \"amount\": \"10.00\", \"paymentMethodId\": " + cash + "}");
+        assertEquals(HttpStatus.NOT_FOUND, foreignInvoice.getStatusCode());
+
+        // Reutilizar el requestId de A no repite su operación ni expone sus datos: es un conflicto.
+        var reused = pay(invoiceB, "50.00", cash, requestIdA);
+        assertEquals(HttpStatus.CONFLICT, reused.getStatusCode());
+        assertTrue(json(reused).has("error"), reused.getBody());
+        assertFalse(json(reused).has("pendingBalance"), reused.getBody());
+        assertEquals(0, paymentRows(invoiceB));
+
+        // Lo de A quedó intacto y A sigue viéndolo.
+        token = tokenA;
+        assertEquals(rowA, invoiceRow(invoiceA));
+        assertEquals(2, paymentRows(invoiceA));
+        assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM invoice WHERE appointment_id = ?", Integer.class, freeAppointmentA));
+        assertEquals(2, json(get("/api/v1/invoices/" + invoiceA + "/payments")).size());
+        assertEquals(HttpStatus.OK, get("/api/v1/invoices/" + appointmentA).getStatusCode());
+        assertEquals(250.0, json(get("/api/v1/dashboard/analytics")).get("financials").get("totalCollected").asDouble());
+    }
+
+    @Test
     void invoicesWithPaymentsCannotBeDeleted() throws Exception {
         long appointmentId = insertAppointment(patientId);
         long invoiceId = createInvoice(appointmentId, "500.00", "200.00", methodId("Efectivo")).get("id").asLong();
