@@ -8,7 +8,8 @@ public class CreateInvoiceCommandFromResourceAssembler {
         return new CreateInvoiceCommand(
                 resource.amount(),
                 resource.appointmentId(),
-                resource.paymentMethodId()
+                resource.paymentMethodId(),
+                resource.initialPayment()
         );
     }
 }

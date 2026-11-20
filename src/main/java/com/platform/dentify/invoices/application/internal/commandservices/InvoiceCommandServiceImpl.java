@@ -85,9 +85,13 @@ public class InvoiceCommandServiceImpl implements InvoiceCommandService {
             throw new AppointmentNotFoundException(command.appointmentId());
         }
 
-        PaymentMethod paymentMethod = paymentMethodRepository.findPaymentMethodById(command.paymentMethodId())
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "El método de pago " + command.paymentMethodId() + " no existe"));
+        // Con abono inicial 0 no hay cobro y el método de pago no se exige ni se registra.
+        PaymentMethod paymentMethod = null;
+        if (command.initialPayment().signum() > 0) {
+            paymentMethod = paymentMethodRepository.findPaymentMethodById(command.paymentMethodId())
+                    .orElseThrow(() -> new IllegalArgumentException(
+                            "El método de pago " + command.paymentMethodId() + " no existe"));
+        }
 
         if (invoiceRepository.findInvoiceByAppointmentId(command.appointmentId()).isPresent()) {
             throw new InvoiceAlreadyExistsException(command.appointmentId());
@@ -95,8 +99,8 @@ public class InvoiceCommandServiceImpl implements InvoiceCommandService {
 
         Invoice invoice = new Invoice(command);
         invoice.setAppointment(entityManager.getReference(Appointment.class, command.appointmentId()));
-        // El cobro del comprobante se registra como abono: es el que cuenta en caja y en saldos.
-        invoice.openBilling(command.amount(), paymentMethod, clock.instant());
+        // El abono inicial se registra como InvoicePayment: es el que cuenta en caja y en saldos.
+        invoice.openBilling(command.initialPayment(), paymentMethod, clock.instant());
         return invoiceRepository.saveAndFlush(invoice);
     }
 }
