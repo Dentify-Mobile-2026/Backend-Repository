@@ -10,6 +10,7 @@ import com.platform.dentify.patientattention.domain.model.commands.DeletePatient
 import com.platform.dentify.patientattention.domain.services.AppointmentCommandService;
 import com.platform.dentify.patientattention.domain.services.PatientCommandService;
 import com.platform.dentify.support.IntegrationTestDatabase;
+import com.platform.dentify.support.IsolatedTestDatabase;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -36,11 +37,12 @@ import static org.junit.jupiter.api.Assertions.*;
  * Módulo de facturación sobre una base nueva, con el esquema que genera Hibernate a partir
  * de las entidades actuales. Se ejecuta solo si DB_URL está definido (en CI hay un MySQL).
  */
+@IsolatedTestDatabase(InvoicesNewSchemaIntegrationTest.DATABASE)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @EnabledIfEnvironmentVariable(named = "DB_URL", matches = ".+")
 class InvoicesNewSchemaIntegrationTest {
 
-    private static final String DATABASE = "dentify_it_invoices_new";
+    static final String DATABASE = "dentify_it_invoices_new";
 
     @DynamicPropertySource
     static void database(DynamicPropertyRegistry registry) {

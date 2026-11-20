@@ -8,6 +8,7 @@ import com.platform.dentify.invoices.infrastructure.persistence.InvoiceSchemaVer
 import com.platform.dentify.patientattention.domain.model.commands.DeleteAppointmentCommand;
 import com.platform.dentify.patientattention.domain.services.AppointmentCommandService;
 import com.platform.dentify.support.IntegrationTestDatabase;
+import com.platform.dentify.support.IsolatedTestDatabase;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -40,11 +41,12 @@ import static org.junit.jupiter.api.Assertions.*;
  * Abonos sobre MySQL real (Sprint 2): concurrencia, idempotencia, rollback, instantes UTC,
  * comprobantes históricos, protección de borrados y dashboard. Se ejecuta solo con DB_URL.
  */
+@IsolatedTestDatabase(InvoicePaymentsIntegrationTest.DATABASE)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @EnabledIfEnvironmentVariable(named = "DB_URL", matches = ".+")
 class InvoicePaymentsIntegrationTest {
 
-    private static final String DATABASE = "dentify_it_invoice_payments";
+    static final String DATABASE = "dentify_it_invoice_payments";
 
     @DynamicPropertySource
     static void database(DynamicPropertyRegistry registry) {

@@ -141,3 +141,12 @@ Para correr la suite de pruebas unitarias:
 ```bash
 ./mvnw test
 ```
+
+Con `DB_URL` definido también se ejecutan las pruebas de integración contra MySQL (así corren en el CI):
+```powershell
+$env:DB_URL = "jdbc:mysql://localhost:3306/dentify_it?createDatabaseIfNotExist=true&sslMode=DISABLED&allowPublicKeyRetrieval=true&useSSL=false"
+.\mvnw.cmd test
+```
+- Usa una base de pruebas en `DB_URL`, **nunca `dentify`**.
+- Cada clase de integración trabaja en su propia base temporal `dentify_it_<clase>` (`@IsolatedTestDatabase`): se recrea vacía al empezar y se elimina sola al terminar la clase, aunque alguna prueba falle.
+- Esas utilidades solo aceptan nombres `dentify_it_<a-z0-9_>`. Rechazan `dentify`, las bases del sistema y la base de `DB_URL` antes de conectarse, así que nunca pueden borrarlas.

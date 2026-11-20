@@ -8,6 +8,7 @@ import com.platform.dentify.invoices.infrastructure.persistence.InvoiceSchemaVer
 import com.platform.dentify.patientattention.domain.model.commands.DeleteAppointmentCommand;
 import com.platform.dentify.patientattention.domain.services.AppointmentCommandService;
 import com.platform.dentify.support.IntegrationTestDatabase;
+import com.platform.dentify.support.IsolatedTestDatabase;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,12 +33,13 @@ import static org.junit.jupiter.api.Assertions.*;
  * modifica la FK), que la migración manual la corrige de forma idempotente y que, después,
  * ni JPA ni SQL pueden eliminar comprobantes al borrar citas o pacientes.
  */
+@IsolatedTestDatabase(InvoicesLegacySchemaIntegrationTest.DATABASE)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @EnabledIfEnvironmentVariable(named = "DB_URL", matches = ".+")
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class InvoicesLegacySchemaIntegrationTest {
 
-    private static final String DATABASE = "dentify_it_invoices_legacy";
+    static final String DATABASE = "dentify_it_invoices_legacy";
     private static final String MIGRATION = "db/migration-manual/V2026_11_20__invoice_fk_restrict.sql";
     private static final long USER_ID = 1L;
     private static final long PATIENT_ID = 1L;
