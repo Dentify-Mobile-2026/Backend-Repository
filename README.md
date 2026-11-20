@@ -32,14 +32,12 @@ API REST de **Dentify**: Plataforma integral para la gestión de consultorios de
    CREATE DATABASE IF NOT EXISTS dentify CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
    USE dentify;
    ```
-3. *(Recomendado)* Sembrar los métodos de pago iniciales para el módulo de facturación:
-   ```sql
-   INSERT INTO payment_method (name, description, created_at, updated_at) VALUES 
-   ('Efectivo', 'Pago en efectivo', NOW(), NOW()),
-   ('Tarjeta de Credito', 'Pago con tarjeta de credito', NOW(), NOW()),
-   ('Tarjeta de Debito', 'Pago con tarjeta de debito', NOW(), NOW()),
-   ('Transferencia', 'Transferencia bancaria / Yape / Plin', NOW(), NOW());
+3. Los métodos de pago (Efectivo, Tarjeta de Credito, Tarjeta de Debito, Transferencia) **se crean solos al arrancar** el backend (`PaymentMethodDataSeeder`). Solo se insertan los que falten, así que no hay que ejecutar ningún INSERT manual. Los clientes deben usar los ids que devuelve `GET /api/v1/payment-methods`.
+4. **Solo en bases creadas antes de esta versión:** ejecuta una vez la migración manual que impide que, al borrar citas o pacientes, se borren en cascada los comprobantes:
+   ```bash
+   mysql -u root -p dentify < src/main/resources/db/migration-manual/V2026_11_20__invoice_fk_restrict.sql
    ```
+   Es idempotente y no modifica datos. Mientras no se aplique, el backend arranca igual, pero registra un `ERROR` de `InvoiceSchemaVerifier` con esta misma ruta.
 
 ---
 
@@ -143,3 +141,12 @@ Para correr la suite de pruebas unitarias:
 ```bash
 ./mvnw test
 ```
+
+Con `DB_URL` definido también se ejecutan las pruebas de integración contra MySQL (así corren en el CI):
+```powershell
+$env:DB_URL = "jdbc:mysql://localhost:3306/dentify_it?createDatabaseIfNotExist=true&sslMode=DISABLED&allowPublicKeyRetrieval=true&useSSL=false"
+.\mvnw.cmd test
+```
+- Usa una base de pruebas en `DB_URL`, **nunca `dentify`**.
+- Cada clase de integración trabaja en su propia base temporal `dentify_it_<clase>` (`@IsolatedTestDatabase`): se recrea vacía al empezar y se elimina sola al terminar la clase, aunque alguna prueba falle.
+- Esas utilidades solo aceptan nombres `dentify_it_<a-z0-9_>`. Rechazan `dentify`, las bases del sistema y la base de `DB_URL` antes de conectarse, así que nunca pueden borrarlas.

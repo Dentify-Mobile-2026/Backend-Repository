@@ -1,8 +1,12 @@
 package com.platform.dentify.invoices.domain.services;
 
 import com.platform.dentify.invoices.domain.model.aggregates.Invoice;
+import com.platform.dentify.invoices.domain.model.entities.InvoicePayment;
 import com.platform.dentify.invoices.domain.model.queries.GetAllInvoicesByUserIdQuery;
 import com.platform.dentify.invoices.domain.model.queries.GetInvoiceByAppointmentIdQuery;
+import com.platform.dentify.invoices.domain.model.queries.GetInvoicePaymentsQuery;
+import com.platform.dentify.invoices.domain.model.queries.GetRecentCollectionsQuery;
+import com.platform.dentify.invoices.domain.model.valueobjects.InvoiceCollection;
 import com.platform.dentify.invoices.domain.model.queries.GetLast5Invoices;
 
 import java.util.List;
@@ -12,5 +16,11 @@ public interface InvoiceQueryService {
     Optional<Invoice> handle(GetInvoiceByAppointmentIdQuery query);
     List<Invoice> handle(GetLast5Invoices query);
     List<Invoice> handle(GetAllInvoicesByUserIdQuery query);
+
+    /** Abonos del comprobante del usuario, del más antiguo al más reciente. */
+    List<InvoicePayment> handle(GetInvoicePaymentsQuery query);
+
+    /** Cobros más recientes (abonos y comprobantes históricos), del más reciente al más antiguo. */
+    List<InvoiceCollection> handle(GetRecentCollectionsQuery query);
 
 }
