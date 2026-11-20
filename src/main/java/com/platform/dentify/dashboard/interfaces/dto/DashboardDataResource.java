@@ -5,5 +5,6 @@ import java.util.List;
 public record DashboardDataResource(
         List<ItemDto> lowStockItems,
         List<InvoiceDto> recentPayments,
-        List<AppointmentDto> recentAppointments
+        List<AppointmentDto> recentAppointments,
+        DashboardAnalyticsDto analytics
 ) {}

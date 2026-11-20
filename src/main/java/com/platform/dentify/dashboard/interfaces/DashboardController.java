@@ -2,6 +2,7 @@ package com.platform.dentify.dashboard.interfaces;
 
 
 import com.platform.dentify.dashboard.domain.services.DashboardQueryService;
+import com.platform.dentify.dashboard.interfaces.dto.DashboardAnalyticsDto;
 import com.platform.dentify.dashboard.interfaces.dto.DashboardDataResource;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -23,7 +24,13 @@ public class DashboardController {
         return new DashboardDataResource(
                 dashboardQueryService.getLowStockItemsForDashboard(),
                 dashboardQueryService.getRecentPayments(),
-                dashboardQueryService.getRecentAppointments()
+                dashboardQueryService.getRecentAppointments(),
+                dashboardQueryService.getMonthlyAnalytics()
         );
+    }
+
+    @GetMapping("/analytics")
+    public DashboardAnalyticsDto getDashboardAnalytics() {
+        return dashboardQueryService.getMonthlyAnalytics();
     }
 }
