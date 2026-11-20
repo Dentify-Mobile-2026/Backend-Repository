@@ -19,6 +19,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -54,7 +55,8 @@ class InvoicesControllerErrorMappingTest {
         var invoice = new Invoice(command);
         var method = new PaymentMethod(new CreatePaymentMethodCommand("Tarjeta de Credito", "Pago con tarjeta de credito"));
         ReflectionTestUtils.setField(method, "id", 9L);
-        invoice.setPaymentMethod(method);
+        // Como el servicio: sin abono inicial explícito se cobra el total con el método elegido.
+        invoice.openBilling(command.amount(), method, Instant.parse("2026-11-20T15:00:00Z"));
         return invoice;
     }
 
@@ -66,7 +68,10 @@ class InvoicesControllerErrorMappingTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.totalAmount").value(120.50))
                 .andExpect(jsonPath("$.paymentMethodId").value(9))
-                .andExpect(jsonPath("$.paymentMethodName").value("Tarjeta de Credito"));
+                .andExpect(jsonPath("$.paymentMethodName").value("Tarjeta de Credito"))
+                // El método informado sale del abono registrado, no de una copia en el comprobante.
+                .andExpect(jsonPath("$.paymentsCount").value(1))
+                .andExpect(jsonPath("$.paymentMethods[0]").value("Tarjeta de Credito"));
 
         ArgumentCaptor<CreateInvoiceCommand> captor = ArgumentCaptor.forClass(CreateInvoiceCommand.class);
         verify(commandService).handle(captor.capture());

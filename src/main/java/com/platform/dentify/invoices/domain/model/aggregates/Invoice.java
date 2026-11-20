@@ -59,12 +59,15 @@ public class Invoice extends AuditableAbstractAggregateRoot<Invoice> {
     private Appointment appointment;
 
     /**
-     * Método de pago a nivel de comprobante. Desde los abonos, la fuente de verdad es el
-     * método de cada {@link InvoicePayment}; aquí solo se conserva el del cobro inicial y el
-     * de los comprobantes históricos.
+     * Método de pago de los comprobantes históricos (anteriores a los abonos). Desde los
+     * abonos, la fuente de verdad es el método de cada {@link InvoicePayment}: los comprobantes
+     * nuevos dejan esta columna en NULL.
+     * <p>
+     * La asociación es de solo lectura ({@code insertable = false, updatable = false}): la
+     * aplicación nunca escribe la columna, así que los valores históricos se conservan intactos.
      */
     @ManyToOne
-    @JoinColumn(name = "paymentmethod_id")
+    @JoinColumn(name = "paymentmethod_id", insertable = false, updatable = false)
     private PaymentMethod paymentMethod;
 
     /** NULL solo en comprobantes anteriores a los abonos; ver {@link #isLegacySettled()}. */
@@ -81,12 +84,13 @@ public class Invoice extends AuditableAbstractAggregateRoot<Invoice> {
     public Invoice(CreateInvoiceCommand command) {
         this.totalAmount = command.amount();
         this.amount = command.amount().doubleValue();
-        //appointment y paymentMethod se asignan en el servicio de aplicación
+        // appointment se asigna en el servicio de aplicación; el método de pago va en cada abono.
     }
 
     /**
      * Abre el cobro del comprobante recién creado y registra, si corresponde, el abono inicial.
-     * Un abono inicial de 0 deja el comprobante PENDING sin abonos ni método de pago.
+     * El método del abono inicial se guarda solo en ese {@link InvoicePayment}, no en el
+     * comprobante. Un abono inicial de 0 deja el comprobante PENDING sin abonos ni método.
      */
     public void openBilling(BigDecimal initialPayment, PaymentMethod method, Instant paidAt) {
         if (status != null) {
@@ -94,7 +98,6 @@ public class Invoice extends AuditableAbstractAggregateRoot<Invoice> {
         }
         this.status = InvoiceStatus.PENDING;
         if (initialPayment != null && initialPayment.signum() > 0) {
-            this.paymentMethod = method;
             registerPayment(initialPayment, method, paidAt, null, null);
         }
     }
@@ -207,7 +210,10 @@ public class Invoice extends AuditableAbstractAggregateRoot<Invoice> {
                 .toList();
     }
 
-    /** Métodos distintos usados en los abonos, en orden de uso. */
+    /**
+     * Métodos distintos usados en los abonos, en orden de uso. Un comprobante histórico no
+     * tiene abonos: se informa el método registrado en el propio comprobante, si lo tiene.
+     */
     public List<PaymentMethod> getPaymentMethodsUsed() {
         if (payments.isEmpty()) {
             return paymentMethod == null ? List.of() : List.of(paymentMethod);
@@ -261,9 +267,5 @@ public class Invoice extends AuditableAbstractAggregateRoot<Invoice> {
 
     public void setAppointment(Appointment appointment) {
         this.appointment = appointment;
-    }
-
-    public void setPaymentMethod(PaymentMethod paymentMethod) {
-        this.paymentMethod = paymentMethod;
     }
 }

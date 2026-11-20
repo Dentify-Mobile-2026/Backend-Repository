@@ -161,7 +161,12 @@ class InvoicesNewSchemaIntegrationTest {
         assertEquals(0, new BigDecimal("120.50").compareTo(
                 jdbc.queryForObject("SELECT total_amount FROM invoice WHERE id = ?", BigDecimal.class, invoiceId)));
         assertEquals(120.5, jdbc.queryForObject("SELECT amount FROM invoice WHERE id = ?", Double.class, invoiceId));
-        assertEquals(card, jdbc.queryForObject("SELECT paymentmethod_id FROM invoice WHERE id = ?", Long.class, invoiceId));
+        // Desde los abonos (Sprint 2) el método elegido se guarda en el cobro y no se duplica en el comprobante.
+        assertNull(jdbc.queryForObject("SELECT paymentmethod_id FROM invoice WHERE id = ?", Long.class, invoiceId));
+        assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM invoice_payment WHERE invoice_id = ?", Integer.class, invoiceId));
+        assertEquals(card, jdbc.queryForObject("SELECT payment_method_id FROM invoice_payment WHERE invoice_id = ?", Long.class, invoiceId));
+        assertEquals(0, new BigDecimal("120.50").compareTo(
+                jdbc.queryForObject("SELECT amount FROM invoice_payment WHERE invoice_id = ?", BigDecimal.class, invoiceId)));
         // Facturar no cambia el estado clínico de la cita.
         assertEquals("SCHEDULED", jdbc.queryForObject("SELECT status FROM appointment WHERE id = ?", String.class, appointmentId));
         assertFalse(jdbc.queryForObject("SELECT completed FROM appointment WHERE id = ?", Boolean.class, appointmentId));

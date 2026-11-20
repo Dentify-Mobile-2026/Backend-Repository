@@ -23,6 +23,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -78,7 +79,12 @@ class InvoiceCommandServiceImplTest {
 
         assertEquals(new BigDecimal("120.50"), invoice.getTotalAmount());
         assertEquals(120.5, invoice.getAmount());
-        assertSame(card, invoice.getPaymentMethod());
+        // Desde los abonos (Sprint 2) el método elegido se guarda en el cobro, no en el comprobante.
+        assertEquals(1, invoice.getPayments().size());
+        assertSame(card, invoice.getPayments().get(0).getPaymentMethod());
+        assertEquals(new BigDecimal("120.50"), invoice.getPayments().get(0).getAmount());
+        assertEquals(List.of(card), invoice.getPaymentMethodsUsed());
+        assertNull(invoice.getPaymentMethod());
         // Solo se consulta la pertenencia de la cita: facturar no cambia su estado clínico.
         verify(appointmentACL).findByIdAndUserId(APPOINTMENT_ID, USER_ID);
         verifyNoMoreInteractions(appointmentACL);

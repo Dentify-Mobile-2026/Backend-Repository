@@ -59,6 +59,7 @@ SELECT id, amount FROM invoice WHERE ROUND(amount, 2) <> amount; -- históricos 
 - **Datos guardados.**
   - Los abonos van en `invoice_payment`: monto `DECIMAL(10,2)`, `paid_at` en UTC y `request_id` único.
   - Son inmutables: su FK hacia `invoice` no tiene cascada.
+  - El método de pago de cada cobro se guarda en `invoice_payment.payment_method_id`. Los comprobantes nuevos dejan `invoice.paymentmethod_id` en NULL: esa columna solo la tienen los históricos y la aplicación nunca la escribe.
 - **Comprobantes anteriores a los abonos** (`status` NULL).
   - Se tratan como cobrados en su totalidad en su fecha de emisión, igual que antes. No se les crean abonos ni se modifican sus filas.
   - La API los marca con `legacy: true` y rechaza abonos nuevos sobre ellos.
@@ -74,6 +75,7 @@ SELECT COUNT(*) FROM invoice WHERE status IS NULL;                              
 SELECT i.id FROM invoice i JOIN invoice_payment p ON p.invoice_id = i.id WHERE i.status IS NULL; -- debe ser 0
 SELECT i.id, i.total_amount, SUM(p.amount) AS pagado FROM invoice i JOIN invoice_payment p ON p.invoice_id = i.id
  GROUP BY i.id, i.total_amount HAVING SUM(p.amount) > i.total_amount;                     -- sobrepagos: debe ser 0
+SELECT COUNT(*) FROM invoice WHERE status IS NOT NULL AND paymentmethod_id IS NOT NULL;  -- método duplicado en nuevos: debe ser 0
 ```
 
 ### 3. Configuración (`application.properties`)

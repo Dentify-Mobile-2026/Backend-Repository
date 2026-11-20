@@ -134,6 +134,13 @@ class InvoicePaymentsIntegrationTest {
         return jdbc.queryForObject("SELECT COUNT(*) FROM invoice_payment WHERE invoice_id = ?", Integer.class, invoiceId);
     }
 
+    /** Fila completa del comprobante, para comprobar que no se modificó. */
+    private String invoiceRow(long invoiceId) {
+        return jdbc.queryForObject("SELECT CONCAT_WS('|', id, appointment_id, amount, IFNULL(total_amount, '-'), "
+                + "IFNULL(status, '-'), IFNULL(paymentmethod_id, '-'), created_at, updated_at) FROM invoice WHERE id = ?",
+                String.class, invoiceId);
+    }
+
     private BigDecimal paidInDatabase(long invoiceId) {
         return jdbc.queryForObject("SELECT COALESCE(SUM(amount), 0) FROM invoice_payment WHERE invoice_id = ?",
                 BigDecimal.class, invoiceId);
@@ -191,6 +198,11 @@ class InvoicePaymentsIntegrationTest {
         assertEquals("Transferencia", payments.get(1).get("paymentMethodName").asText());
         assertTrue(payments.get(0).get("paidAt").asText().endsWith("Z"), payments.toString());
         assertEquals(0, new BigDecimal("950.00").compareTo(paidInDatabase(invoiceId)));
+
+        // Cada abono guarda su método; el comprobante nuevo no duplica ninguno.
+        assertNull(jdbc.queryForObject("SELECT paymentmethod_id FROM invoice WHERE id = ?", Long.class, invoiceId));
+        assertEquals(List.of(methodId("Efectivo"), methodId("Transferencia")), jdbc.queryForList(
+                "SELECT payment_method_id FROM invoice_payment WHERE invoice_id = ? ORDER BY paid_at, id", Long.class, invoiceId));
     }
 
     @Test
@@ -327,6 +339,7 @@ class InvoicePaymentsIntegrationTest {
         long appointmentId = insertAppointment(patientId);
         jdbc.update("INSERT INTO invoice (created_at, updated_at, amount, appointment_id) VALUES (NOW(6), NOW(6), 75.5, ?)", appointmentId);
         long invoiceId = jdbc.queryForObject("SELECT id FROM invoice WHERE appointment_id = ?", Long.class, appointmentId);
+        String rowBefore = invoiceRow(invoiceId);
 
         JsonNode invoice = null;
         for (JsonNode candidate : json(get("/api/v1/invoices"))) {
@@ -345,6 +358,39 @@ class InvoicePaymentsIntegrationTest {
         assertEquals("[]", get("/api/v1/invoices/" + invoiceId + "/payments").getBody());
         assertNull(jdbc.queryForObject("SELECT status FROM invoice WHERE id = ?", String.class, invoiceId),
                 "leer un comprobante histórico no debe escribir datos");
+        assertEquals(rowBefore, invoiceRow(invoiceId), "el comprobante histórico debe quedar intacto");
+    }
+
+    @Test
+    void historicalInvoiceKeepsItsPaymentMethodAndIsNeverRewritten() throws Exception {
+        long card = methodId("Tarjeta de Credito");
+        long appointmentId = insertAppointment(patientId);
+        jdbc.update("INSERT INTO invoice (created_at, updated_at, amount, appointment_id, paymentmethod_id) "
+                + "VALUES ('2026-10-15 10:00:00', '2026-10-15 10:00:00', 120.5, ?, ?)", appointmentId, card);
+        long invoiceId = jdbc.queryForObject("SELECT id FROM invoice WHERE appointment_id = ?", Long.class, appointmentId);
+        String rowBefore = invoiceRow(invoiceId);
+
+        JsonNode historical = null;
+        for (JsonNode candidate : json(get("/api/v1/invoices"))) {
+            if (candidate.get("id").asLong() == invoiceId) {
+                historical = candidate;
+            }
+        }
+        assertNotNull(historical);
+        assertTrue(historical.get("legacy").asBoolean());
+        assertEquals(card, historical.get("paymentMethodId").asLong());
+        assertEquals("[\"Tarjeta de Credito\"]", historical.get("paymentMethods").toString());
+        assertMoney("120.50", historical.get("totalAmount"));
+
+        // Actividad nueva alrededor: un abono rechazado sobre el histórico y cobros en otro comprobante.
+        assertEquals(HttpStatus.CONFLICT, pay(invoiceId, "1.00", card, UUID.randomUUID().toString()).getStatusCode());
+        long other = createInvoice(insertAppointment(patientId), "300.00", "100.00", methodId("Efectivo")).get("id").asLong();
+        assertEquals(HttpStatus.CREATED, pay(other, "50.00", card, UUID.randomUUID().toString()).getStatusCode());
+        json(get("/api/v1/invoices?status=PAID"));
+        json(get("/api/v1/dashboard/analytics"));
+
+        assertEquals(rowBefore, invoiceRow(invoiceId), "el comprobante histórico no debe modificarse");
+        assertEquals(0, paymentRows(invoiceId));
     }
 
     @Test

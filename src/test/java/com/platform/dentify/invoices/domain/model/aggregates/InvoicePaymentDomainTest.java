@@ -107,12 +107,17 @@ class InvoicePaymentDomainTest {
     }
 
     @Test
-    void initialPaymentOpensBillingWithItsMethod() {
+    void initialPaymentKeepsItsMethodOnThePaymentOnly() {
         var partial = new Invoice(new CreateInvoiceCommand(money("950"), 1L, 1L, money("350")));
         partial.openBilling(money("350.00"), CASH, NOW);
         assertEquals(InvoiceStatus.PARTIAL, partial.getStatus());
         assertEquals(1, partial.getPayments().size());
-        assertSame(CASH, partial.getPaymentMethod());
+        // El método vive en el abono (fuente de verdad); el comprobante nuevo no lo duplica.
+        assertSame(CASH, partial.getPayments().get(0).getPaymentMethod());
+        assertEquals(money("350.00"), partial.getPayments().get(0).getAmount());
+        assertEquals(NOW, partial.getPayments().get(0).getPaidAt());
+        assertNull(partial.getPaymentMethod());
+        assertEquals(List.of(CASH), partial.getPaymentMethodsUsed());
 
         var unpaid = new Invoice(new CreateInvoiceCommand(money("200"), 1L, null, BigDecimal.ZERO));
         unpaid.openBilling(BigDecimal.ZERO, null, NOW);
@@ -151,6 +156,31 @@ class InvoicePaymentDomainTest {
         assertThrows(InvoiceOverpaymentException.class,
                 () -> legacy.registerPayment(money("0.01"), CASH, NOW, null, null));
         assertTrue(legacy.getPayments().isEmpty());
+    }
+
+    @Test
+    void legacyInvoiceKeepsItsOwnPaymentMethodUntouched() {
+        var legacy = new Invoice();
+        ReflectionTestUtils.setField(legacy, "amount", 75.5);
+        ReflectionTestUtils.setField(legacy, "paymentMethod", TRANSFER);
+
+        assertEquals(List.of(TRANSFER), legacy.getPaymentMethodsUsed());
+
+        assertThrows(InvoiceOverpaymentException.class,
+                () -> legacy.registerPayment(money("0.01"), CASH, NOW, null, null));
+        assertSame(TRANSFER, legacy.getPaymentMethod());
+        assertTrue(legacy.isLegacySettled(), "un abono rechazado no abre el cobro de un histórico");
+        assertNull(ReflectionTestUtils.getField(legacy, "status"));
+        assertEquals(List.of(TRANSFER), legacy.getPaymentMethodsUsed());
+    }
+
+    @Test
+    void invoicePaymentMethodColumnIsReadOnlyForTheApplication() throws NoSuchFieldException {
+        var column = Invoice.class.getDeclaredField("paymentMethod").getAnnotation(jakarta.persistence.JoinColumn.class);
+
+        assertEquals("paymentmethod_id", column.name());
+        assertFalse(column.insertable(), "los comprobantes nuevos no deben escribir paymentmethod_id");
+        assertFalse(column.updatable(), "los comprobantes históricos no deben ver modificado su método");
     }
 
     @Test
