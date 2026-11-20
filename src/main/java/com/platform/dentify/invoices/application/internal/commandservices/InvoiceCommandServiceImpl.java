@@ -13,11 +13,13 @@ import com.platform.dentify.invoices.infrastructure.repositories.PaymentMethodRe
 import com.platform.dentify.patientattention.domain.model.aggregates.Appointment;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.time.Clock;
 import java.util.Optional;
 
 @Service
@@ -28,6 +30,7 @@ public class InvoiceCommandServiceImpl implements InvoiceCommandService {
     private final AppointmentACL appointmentACL;
     private final PaymentMethodRepository paymentMethodRepository;
     private final TransactionTemplate transactionTemplate;
+    private final Clock clock;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -37,11 +40,23 @@ public class InvoiceCommandServiceImpl implements InvoiceCommandService {
                                      AppointmentACL appointmentACL,
                                      PaymentMethodRepository paymentMethodRepository,
                                      PlatformTransactionManager transactionManager) {
+        this(authenticatedUserProvider, invoiceRepository, appointmentACL, paymentMethodRepository,
+                transactionManager, Clock.systemUTC());
+    }
+
+    @Autowired
+    public InvoiceCommandServiceImpl(AuthenticatedUserProvider authenticatedUserProvider,
+                                     InvoiceRepository invoiceRepository,
+                                     AppointmentACL appointmentACL,
+                                     PaymentMethodRepository paymentMethodRepository,
+                                     PlatformTransactionManager transactionManager,
+                                     Clock clock) {
         this.authenticatedUserProvider = authenticatedUserProvider;
         this.invoiceRepository = invoiceRepository;
         this.appointmentACL = appointmentACL;
         this.paymentMethodRepository = paymentMethodRepository;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
+        this.clock = clock;
     }
 
     /**
@@ -79,8 +94,9 @@ public class InvoiceCommandServiceImpl implements InvoiceCommandService {
         }
 
         Invoice invoice = new Invoice(command);
-        invoice.setPaymentMethod(paymentMethod);
         invoice.setAppointment(entityManager.getReference(Appointment.class, command.appointmentId()));
+        // El cobro del comprobante se registra como abono: es el que cuenta en caja y en saldos.
+        invoice.openBilling(command.amount(), paymentMethod, clock.instant());
         return invoiceRepository.saveAndFlush(invoice);
     }
 }
