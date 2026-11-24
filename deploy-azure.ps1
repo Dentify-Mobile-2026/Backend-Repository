@@ -18,29 +18,23 @@ param(
     [string]$JwtSecret = (-join ((48..57) + (65..90) + (97..122) | Get-Random -Count 48 | ForEach-Object { [char]$_ }))
 )
 
-$ErrorActionPreference = "Stop"
+$ErrorActionPreference = "Continue"
 
 function Invoke-Step {
     param(
         [string]$Label,
         [scriptblock]$Command
     )
-    $prev = $ErrorActionPreference
-    $ErrorActionPreference = "Continue"
-    try {
-        & $Command
-        if ($LASTEXITCODE -ne 0) {
-            throw "DETENIDO en '$Label' (exit code $LASTEXITCODE)."
-        }
-    } finally {
-        $ErrorActionPreference = $prev
+    & $Command
+    if ($LASTEXITCODE -ne 0) {
+        throw "DETENIDO en '$Label' (exit code $LASTEXITCODE)."
     }
 }
 
-Write-Host "==> [PASO 1/4] Verificando que la BD externa '$DbHost`:$DbPort' este activa..." -ForegroundColor Cyan
+Write-Host "==> [PASO 1/4] Verificando que la BD externa '${DbHost}:${DbPort}' este activa..." -ForegroundColor Cyan
 $tcpOk = Test-NetConnection -ComputerName $DbHost -Port $DbPort -WarningAction SilentlyContinue
 if (-not $tcpOk.TcpTestSucceeded) {
-    throw "No se pudo conectar a ${DbHost}:$DbPort. Verifica en Aiven que el servicio ya aparezca en estado 'Running'."
+    throw "No se pudo conectar a ${DbHost}:${DbPort}. Verifica en Aiven que el servicio ya aparezca en estado 'Running'."
 }
 Write-Host "    Conexion TCP a MySQL confirmada." -ForegroundColor Green
 
@@ -49,21 +43,21 @@ $jdbcUrl = "jdbc:mysql://${DbHost}:${DbPort}/${DbName}?sslMode=REQUIRED&serverTi
 Write-Host "==> [PASO 2/4] Verificando sesion de Azure y creando App Service '$AppName'..." -ForegroundColor Cyan
 Invoke-Step "az account show" { az account show --output table }
 
-$rgExists = az group exists --name $ResourceGroup
+$rgExists = (az group exists --name $ResourceGroup 2>$null | Out-String).Trim()
 if ($rgExists -ne "true") {
     Invoke-Step "az group create" { az group create --name $ResourceGroup --location $Location --output none }
 }
 
 $planName = "plan-dentify"
-$planExists = (az appservice plan show --name $planName --resource-group $ResourceGroup --query "name" -o tsv 2>$null)
-if (-not $planExists) {
+$planExists = (az appservice plan show --name $planName --resource-group $ResourceGroup --query "name" -o tsv 2>$null | Out-String).Trim()
+if ($LASTEXITCODE -ne 0 -or -not $planExists) {
     Invoke-Step "az appservice plan create" {
         az appservice plan create --name $planName --resource-group $ResourceGroup --location $Location --sku B1 --is-linux --output none
     }
 }
 
-$appExists = (az webapp show --name $AppName --resource-group $ResourceGroup --query "name" -o tsv 2>$null)
-if (-not $appExists) {
+$appExists = (az webapp show --name $AppName --resource-group $ResourceGroup --query "name" -o tsv 2>$null | Out-String).Trim()
+if ($LASTEXITCODE -ne 0 -or -not $appExists) {
     Invoke-Step "az webapp create" {
         az webapp create --resource-group $ResourceGroup --plan $planName --name $AppName --runtime "JAVA:17-java17" --output none
     }
