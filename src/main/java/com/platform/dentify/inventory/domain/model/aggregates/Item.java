@@ -48,6 +48,9 @@ public class Item extends AuditableAbstractAggregateRoot<Item> {
     @OneToMany(mappedBy = "item", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<LogEntry> logEntries;
 
+    @Version
+    private Long version;
+
     public Item() {}
 
     public Item(CreateItemCommand command) {

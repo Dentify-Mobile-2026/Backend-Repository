@@ -12,6 +12,8 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -25,6 +27,7 @@ import java.util.Map;
 @Tag(name = "Log Entries", description = "Log Entries Endpoint")
 public class LogEntryController {
 
+    private static final Logger log = LoggerFactory.getLogger(LogEntryController.class);
     private final LogEntryCommandService logEntryCommandService;
     private final LogEntryQueryService logEntryQueryService;
 
@@ -52,9 +55,9 @@ public class LogEntryController {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", e.getMessage()));
 
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Error inesperado creando log de inventario", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "Error: " + e.getMessage()));
+                    .body(Map.of("error", "No se pudo registrar el movimiento"));
         }
     }
 

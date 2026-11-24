@@ -1,5 +1,6 @@
 package com.platform.dentify.inventory.application.internal.commandservices;
 
+import com.platform.dentify.iam.infrastructure.security.AuthenticatedUserProvider;
 import com.platform.dentify.inventory.domain.model.aggregates.LogEntry;
 import com.platform.dentify.inventory.domain.model.commands.CreateLogEntryCommand;
 import com.platform.dentify.inventory.domain.services.LogEntryCommandService;
@@ -13,17 +14,21 @@ public class LogEntryCommandServiceImpl implements LogEntryCommandService {
 
     private final LogEntryRepository logEntryRepository;
     private final ItemRepository itemRepository;
+    private final AuthenticatedUserProvider authenticatedUserProvider;
 
     public LogEntryCommandServiceImpl(LogEntryRepository logEntryRepository,
-                                      ItemRepository itemRepository) {
+                                      ItemRepository itemRepository,
+                                      AuthenticatedUserProvider authenticatedUserProvider) {
         this.logEntryRepository = logEntryRepository;
         this.itemRepository = itemRepository;
+        this.authenticatedUserProvider = authenticatedUserProvider;
     }
 
     @Override
     @Transactional
     public Long handle(CreateLogEntryCommand command) {
-        var itemOptional = itemRepository.findById(command.itemId());
+        Long userId = authenticatedUserProvider.getCurrentUserId();
+        var itemOptional = itemRepository.findByIdAndUser_Id(command.itemId(), userId);
 
         if(itemOptional.isEmpty()) {
             throw new IllegalArgumentException("Item not found");

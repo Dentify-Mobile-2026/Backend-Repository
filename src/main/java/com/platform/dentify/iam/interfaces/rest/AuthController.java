@@ -3,6 +3,7 @@ package com.platform.dentify.iam.interfaces.rest;
 import com.platform.dentify.iam.domain.services.AuthCommandService;
 import com.platform.dentify.iam.interfaces.rest.resources.AuthRequestResource;
 import com.platform.dentify.iam.interfaces.rest.resources.AuthResponseResource;
+import com.platform.dentify.iam.interfaces.rest.resources.RefreshTokenRequest;
 import com.platform.dentify.iam.interfaces.rest.resources.RegisterRequestResource;
 import com.platform.dentify.iam.interfaces.rest.resources.RegisterResponseResource;
 import com.platform.dentify.iam.interfaces.rest.transform.SignInCommandFromResourceAssembler;
@@ -44,5 +45,12 @@ public class AuthController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
+    @PostMapping("/refresh")
+    public ResponseEntity<AuthResponseResource> refresh(@RequestBody RefreshTokenRequest request) {
+        if (request == null || request.refreshToken() == null || request.refreshToken().isBlank()) {
+            throw new IllegalArgumentException("El refreshToken es requerido");
+        }
+        return ResponseEntity.ok(authService.refresh(request.refreshToken()));
+    }
 
 }

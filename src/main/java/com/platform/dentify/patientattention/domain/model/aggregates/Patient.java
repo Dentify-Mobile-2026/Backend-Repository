@@ -15,6 +15,7 @@ import java.time.Period;
 import java.util.List;
 
 @Entity
+@Table(uniqueConstraints = @UniqueConstraint(name = "uk_patient_dni_user", columnNames = {"dni", "user_id"}))
 @Getter
 @Setter
 public class Patient extends AuditableAbstractAggregateRoot<Patient> {

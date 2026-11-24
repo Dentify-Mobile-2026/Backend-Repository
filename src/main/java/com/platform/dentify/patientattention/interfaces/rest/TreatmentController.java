@@ -118,12 +118,16 @@ public class TreatmentController {
     @Operation(summary = "Delete a treatment", description = "Delete a treatment by ID")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "204", description = "Deleted treatment"),
-            @ApiResponse(responseCode = "404", description = "Treatment not found")
+            @ApiResponse(responseCode = "404", description = "Treatment not found"),
+            @ApiResponse(responseCode = "409", description = "Treatment is referenced by treatment plans")
     })
     public ResponseEntity<?> deleteTreatment(@PathVariable Long id) {
         try {
             treatmentCommandService.handle(new DeleteTreatmentCommand(id));
             return ResponseEntity.noContent().build();
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
+                    "error", "No se puede eliminar este tratamiento porque forma parte de un plan de tratamiento; puedes editarlo o desactivarlo."));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", e.getMessage()));
         }

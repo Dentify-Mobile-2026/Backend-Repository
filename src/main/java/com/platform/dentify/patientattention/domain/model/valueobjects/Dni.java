@@ -7,7 +7,7 @@ import jakarta.validation.constraints.Size;
 
 @Embeddable
 public record Dni(@NotBlank
-                  @Column(unique = true, nullable = false)
+                  @Column(nullable = false)
                   @Size(min = 8, max = 8)
                   String dni) {
     public Dni {

@@ -120,10 +120,18 @@ public class PatientController {
     @ApiResponses(value = {
             @ApiResponse(responseCode = "204", description = "Deleted patient"),
             @ApiResponse(responseCode = "400", description = "Bad Request"),
+            @ApiResponse(responseCode = "409", description = "Patient has protected invoices or treatment plans")
     })
     public ResponseEntity<?> deletePatient(@PathVariable Long id) {
-        patientCommandService.handle(new DeletePatientCommand(id));
-        return ResponseEntity.noContent().build();
+        try {
+            patientCommandService.handle(new DeletePatientCommand(id));
+            return ResponseEntity.noContent().build();
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
+                    "error", "No se puede eliminar este paciente porque tiene comprobantes o planes de tratamiento registrados."));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", e.getMessage()));
+        }
     }
 
 

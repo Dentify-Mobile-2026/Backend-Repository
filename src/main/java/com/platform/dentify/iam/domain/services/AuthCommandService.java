@@ -9,5 +9,6 @@ public interface AuthCommandService {
 
     AuthResponseResource login(SignInCommand command);
     RegisterResponseResource register(SignUpCommand command);
+    AuthResponseResource refresh(String refreshToken);
 
 }

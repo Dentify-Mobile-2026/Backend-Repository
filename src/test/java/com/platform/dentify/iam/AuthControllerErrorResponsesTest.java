@@ -107,4 +107,22 @@ class AuthControllerErrorResponsesTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.username").value("valeria"));
     }
+
+    @Test
+    void refreshRequiresTokenAndRejectsInvalidRefreshToken() throws Exception {
+        mockMvc.perform(post("/api/auth/refresh").contentType(MediaType.APPLICATION_JSON).content("{}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("El refreshToken es requerido"));
+
+        when(authService.refresh("bad-token")).thenThrow(new BadCredentialsException("Refresh token inválido o expirado"));
+        mockMvc.perform(post("/api/auth/refresh").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"refreshToken\":\"bad-token\"}"))
+                .andExpect(status().isUnauthorized());
+
+        when(authService.refresh("valid-refresh")).thenReturn(new AuthResponseResource("nuevo-acceso", "nuevo-refresco"));
+        mockMvc.perform(post("/api/auth/refresh").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"refreshToken\":\"valid-refresh\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accessToken").value("nuevo-acceso"));
+    }
 }

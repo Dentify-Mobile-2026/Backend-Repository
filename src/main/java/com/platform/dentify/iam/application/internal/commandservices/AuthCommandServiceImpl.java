@@ -60,6 +60,20 @@ public class AuthCommandServiceImpl implements AuthCommandService {
         return new RegisterResponseResource(accessToken, refreshToken, user.getUsername());
     }
 
+    @Override
+    public AuthResponseResource refresh(String refreshToken) {
+        if (refreshToken == null || refreshToken.isBlank()
+                || !jwtService.isTokenValid(refreshToken)
+                || !jwtService.isRefreshToken(refreshToken)) {
+            throw new BadCredentialsException("Refresh token inválido o expirado");
+        }
+        Long userId = Long.valueOf(jwtService.extractUserId(refreshToken));
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado"));
 
+        String newAccessToken = jwtService.generateAccessToken(String.valueOf(user.getId()));
+        String newRefreshToken = jwtService.generateRefreshToken(String.valueOf(user.getId()));
+        return new AuthResponseResource(newAccessToken, newRefreshToken);
+    }
 
 }

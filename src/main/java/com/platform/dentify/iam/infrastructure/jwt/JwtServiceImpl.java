@@ -30,6 +30,7 @@ public class JwtServiceImpl implements JwtService {
     public String generateAccessToken(String userId) {
         return Jwts.builder()
                 .setSubject(userId)
+                .claim("type", "access")
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + ACCESS_TOKEN_EXPIRATION))
                 .signWith(key)
@@ -40,6 +41,7 @@ public class JwtServiceImpl implements JwtService {
     public String generateRefreshToken(String userId) {
         return Jwts.builder()
                 .setSubject(userId)
+                .claim("type", "refresh")
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + REFRESH_TOKEN_EXPIRATION))
                 .signWith(key)
@@ -55,6 +57,25 @@ public class JwtServiceImpl implements JwtService {
             return false;
         }
 
+    }
+
+    public boolean isRefreshToken(String token) {
+        try {
+            var claims = Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token).getBody();
+            return "refresh".equals(claims.get("type", String.class));
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    public boolean isAccessToken(String token) {
+        try {
+            var claims = Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token).getBody();
+            String type = claims.get("type", String.class);
+            return type == null || "access".equals(type);
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     @Override

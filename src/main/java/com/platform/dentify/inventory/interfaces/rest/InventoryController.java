@@ -17,6 +17,8 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -30,6 +32,7 @@ import java.util.Map;
 @Tag(name = "Items", description = "Items Endpoint")
 public class InventoryController {
 
+    private static final Logger log = LoggerFactory.getLogger(InventoryController.class);
     private final ItemCommandService itemCommandService;
     private final ItemQueryService itemQueryService;
 
@@ -55,9 +58,9 @@ public class InventoryController {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", e.getMessage()));
 
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Error inesperado creando insumo", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "Error: " + e.getMessage()));
+                    .body(Map.of("error", "No se pudo registrar el insumo"));
         }
     }
 

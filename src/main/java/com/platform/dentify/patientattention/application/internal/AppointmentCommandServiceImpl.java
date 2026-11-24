@@ -116,7 +116,8 @@ public class AppointmentCommandServiceImpl implements AppointmentCommandService 
         AppointmentStatus newStatus = AppointmentStatus.valueOf(command.status().trim().toUpperCase());
         if (newStatus == AppointmentStatus.IN_PROGRESS
                 && appointment.getAppointmentDate() != null
-                && LocalDateTime.now().isBefore(appointment.getAppointmentDate())) {
+                && LocalDateTime.now(com.platform.dentify.shared.domain.model.valueobjects.BusinessTime.ZONE)
+                        .isBefore(appointment.getAppointmentDate())) {
             throw new IllegalArgumentException(
                     "La cita no puede pasar a 'En Atención' antes de su hora programada.");
         }

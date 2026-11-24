@@ -46,10 +46,12 @@ public class ProfileCommandServiceImpl implements ProfileCommandService {
     @Override
     public Optional<User> handle(UpdatePasswordCommand command) {
         Long userId = authenticatedUserProvider.getCurrentUserId();
-        User user = userRepository.findById(userId).orElseThrow(()-> new IllegalStateException("User not found"));
-        System.out.println(user.getPassword() + "\n");
+        User user = userRepository.findById(userId).orElseThrow(() -> new IllegalStateException("User not found"));
         if (!passwordEncoder.matches(command.oldPassword(), user.getPassword())) {
-            throw new IllegalStateException("Old password is incorrect");
+            throw new IllegalArgumentException("La contraseña actual es incorrecta");
+        }
+        if (command.newPassword() == null || command.newPassword().trim().length() < 6) {
+            throw new IllegalArgumentException("La nueva contraseña debe tener al menos 6 caracteres");
         }
 
         String hashedPassword = passwordEncoder.encode(command.newPassword());

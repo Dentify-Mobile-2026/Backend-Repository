@@ -31,8 +31,8 @@ public class PatientCommandServiceImpl implements PatientCommandService {
     public Long handle(CreatePatientCommand command) {
         Long userId = authenticatedUserProvider.getCurrentUserId();
 
-        if (patientRepository.existsByName_FirstNameAndName_LastNameAndUser_Id(command.firstName(), command.lastName(), userId)){
-            throw new IllegalArgumentException("Patient already exists");
+        if (patientRepository.existsByDni_DniAndUser_Id(command.dni(), userId)) {
+            throw new IllegalArgumentException("Ya existe un paciente registrado con el DNI " + command.dni());
         }
 
         var patient = new Patient(command);
@@ -76,6 +76,10 @@ public class PatientCommandServiceImpl implements PatientCommandService {
 
         if(patient.isEmpty()) {
             throw new IllegalArgumentException("Patient not found");
+        }
+
+        if (patientRepository.existsByDni_DniAndUser_IdAndIdNot(command.dni(), userId, command.id())) {
+            throw new IllegalArgumentException("Ya existe otro paciente registrado con el DNI " + command.dni());
         }
 
         patient.get().update(command);

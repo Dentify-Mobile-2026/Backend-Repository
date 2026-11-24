@@ -5,6 +5,7 @@ import com.platform.dentify.invoices.domain.model.aggregates.Invoice;
 import com.platform.dentify.patientattention.domain.model.commands.CreateAppointmentCommand;
 import com.platform.dentify.patientattention.domain.model.valueobjects.AppointmentStatus;
 import com.platform.dentify.shared.domain.model.aggregates.AuditableAbstractAggregateRoot;
+import com.platform.dentify.shared.domain.model.valueobjects.BusinessTime;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
@@ -94,7 +95,7 @@ public class Appointment extends AuditableAbstractAggregateRoot<Appointment> {
         }
 
         if (this.appointmentDate != null && this.duration != null) {
-            LocalDateTime now = LocalDateTime.now();
+            LocalDateTime now = LocalDateTime.now(BusinessTime.ZONE);
             LocalDateTime end = this.appointmentDate.plus(toDuration(this.duration));
             if (!now.isBefore(this.appointmentDate) && now.isBefore(end)) {
                 return AppointmentStatus.IN_PROGRESS;
