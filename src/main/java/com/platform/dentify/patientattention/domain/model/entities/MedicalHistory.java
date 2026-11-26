@@ -82,6 +82,7 @@ public class MedicalHistory extends AuditableModel {
         this.annulmentReason = trimmed;
         this.annulledAt = when;
     }
+
     public MedicalHistory(CreateMedicalHistoryCommand command) {
         description = command.description();
         record = command.record();

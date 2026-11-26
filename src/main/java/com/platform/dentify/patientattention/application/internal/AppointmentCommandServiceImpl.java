@@ -179,18 +179,19 @@ public class AppointmentCommandServiceImpl implements AppointmentCommandService 
         appointmentRepository.deleteById(command.id());
     }
 
-    /**
-     * Verifica que el intervalo solicitado no se solape con otra cita activa del mismo usuario (profesional).
-     * Citas canceladas o no asistidas no bloquean el horario.
-     *
-     * @param excludeAppointmentId cita que se está editando (se ignora a sí misma); null al crear
-     */
+    /** Rechaza la cita si cae fuera del horario de atención del consultorio (US09). */
     private void assertWithinBusinessHours(Long userId, LocalDateTime start, LocalTime duration) {
         if (businessHoursService != null) {
             businessHoursService.assertWithinBusinessHours(userId, start, duration);
         }
     }
 
+    /**
+     * Verifica que el intervalo solicitado no se solape con otra cita activa del mismo usuario (profesional).
+     * Citas canceladas o no asistidas no bloquean el horario.
+     *
+     * @param excludeAppointmentId cita que se está editando (se ignora a sí misma); null al crear
+     */
     private void assertNoScheduleConflict(Long userId, LocalDateTime start, LocalTime duration, Long excludeAppointmentId) {
         LocalDateTime end = start.plus(Appointment.toDuration(duration));
         var sameDay = appointmentRepository

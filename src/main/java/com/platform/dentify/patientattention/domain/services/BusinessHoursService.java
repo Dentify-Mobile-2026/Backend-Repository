@@ -13,7 +13,10 @@ public interface BusinessHoursService {
     /** Días configurados por el consultorio autenticado; vacío si nunca definió su horario. */
     List<BusinessDay> getForCurrentUser();
 
-    /** Guarda el horario del consultorio autenticado; solo afecta a las citas que se creen o reprogramen después. */
+    /**
+     * Guarda el horario del consultorio autenticado; solo afecta a las citas que se creen o
+     * reprogramen después. Una vez guardado, un día que nunca se envió cuenta como cerrado.
+     */
     List<BusinessDay> handle(UpdateBusinessHoursCommand command);
 
     /**

@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -40,10 +41,12 @@ public class BusinessHoursController {
 
     @PutMapping
     @Operation(summary = "Save business hours",
-            description = "Saves the office hours; they apply to appointments created or rescheduled afterwards")
+            description = "Saves the office hours; they apply to appointments created or rescheduled afterwards. "
+                    + "Send the seven days: once hours are saved, a weekday that was never sent counts as closed")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Business hours saved"),
-            @ApiResponse(responseCode = "400", description = "Invalid days or hours")
+            @ApiResponse(responseCode = "400", description = "Invalid days or hours"),
+            @ApiResponse(responseCode = "409", description = "The hours were being saved at the same time from another session")
     })
     public ResponseEntity<?> saveBusinessHours(@RequestBody UpdateBusinessHoursResource resource) {
         try {
@@ -52,6 +55,10 @@ public class BusinessHoursController {
             return ResponseEntity.ok(BusinessHoursResourceAssembler.toResource(days));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", e.getMessage()));
+        } catch (DataIntegrityViolationException e) {
+            // Dos guardados simultáneos del mismo consultorio chocan con uk_business_day_user_day.
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("error", "El horario se estaba guardando desde otra sesión. Vuelva a intentarlo."));
         }
     }
 }
