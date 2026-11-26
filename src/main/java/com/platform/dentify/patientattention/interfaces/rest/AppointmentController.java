@@ -2,6 +2,7 @@ package com.platform.dentify.patientattention.interfaces.rest;
 
 import com.platform.dentify.patientattention.domain.exceptions.AppointmentConflictException;
 import com.platform.dentify.patientattention.domain.exceptions.AppointmentOutsideBusinessHoursException;
+import com.platform.dentify.patientattention.domain.exceptions.PastAppointmentException;
 import com.platform.dentify.patientattention.domain.model.commands.CreateAppointmentCommand;
 import com.platform.dentify.patientattention.domain.model.commands.DeleteAppointmentCommand;
 import com.platform.dentify.patientattention.domain.model.queries.GetAllAppointmentsByPatientAndUserIdQuery;
@@ -149,6 +150,9 @@ public class AppointmentController {
             AppointmentResource updatedResource = AppointmentResourceFromEntityAssembler.toResourceFromEntity(result.get());
             return ResponseEntity.ok(updatedResource);
 
+        } catch (PastAppointmentException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("error", e.getMessage(), "code", PastAppointmentException.CODE));
         } catch (AppointmentOutsideBusinessHoursException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(Map.of("error", e.getMessage(), "code", AppointmentOutsideBusinessHoursException.CODE));
@@ -163,7 +167,7 @@ public class AppointmentController {
     @Operation(summary = "Update appointment status and clinical notes", description = "Changes the lifecycle status of an appointment and optionally records clinical notes")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Appointment status updated"),
-            @ApiResponse(responseCode = "400", description = "Invalid status"),
+            @ApiResponse(responseCode = "400", description = "Invalid status, or an attended appointment cannot change its status"),
             @ApiResponse(responseCode = "404", description = "Appointment not found")
     })
     public ResponseEntity<?> updateAppointmentStatus(
@@ -188,12 +192,16 @@ public class AppointmentController {
     @Operation(summary = "Delete an appointment", description = "Deletes a specific appointment belonging to the current user")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Appointment deleted successfully"),
-            @ApiResponse(responseCode = "404", description = "Appointment not found or not authorized")
+            @ApiResponse(responseCode = "404", description = "Appointment not found or not authorized"),
+            @ApiResponse(responseCode = "409", description = "The appointment already started and cannot be deleted")
     })
     public ResponseEntity<?> deleteAppointment(@PathVariable Long appointmentId) {
         try {
             appointmentCommandService.handle(new DeleteAppointmentCommand(appointmentId));
             return ResponseEntity.ok(Map.of("message", "Appointment deleted successfully"));
+        } catch (PastAppointmentException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("error", e.getMessage(), "code", PastAppointmentException.CODE));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", e.getMessage()));
         } catch (Exception e) {

@@ -82,6 +82,30 @@ public class CitasSteps {
                 Map.of("status", "COMPLETED", "clinicalNotes", nota));
     }
 
+    @Cuando("elimino la cita")
+    public void eliminoLaCita() {
+        api.delete("/api/v1/appointments/" + api.id("cita"));
+    }
+
+    @Cuando("reprogramo la cita al {string} a las {string}")
+    public void reprogramoLaCita(String fecha, String hora) {
+        api.put("/api/v1/appointments/" + api.id("cita"), Map.of(
+                "appointmentDate", fecha + "T" + hora + ":00",
+                "reason", "Control",
+                "duration", "01:00"));
+    }
+
+    @Dado("que la cita está atendida")
+    public void laCitaEstaAtendida() {
+        marcoComoAtendida("Atención terminada");
+        assertThat(api.status()).as(api.body()).isEqualTo(200);
+    }
+
+    @Cuando("intento volver la cita a agendada")
+    public void intentoVolverLaCitaAAgendada() {
+        api.patch("/api/v1/appointments/" + api.id("cita") + "/status", Map.of("status", "SCHEDULED"));
+    }
+
     @Entonces("la cita queda en estado {string}")
     public void laCitaQuedaEnEstado(String estado) {
         assertThat((String) api.read("$.status")).isEqualTo(estado);

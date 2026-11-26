@@ -79,6 +79,8 @@ class BusinessHoursTest {
         businessHours = new BusinessHoursServiceImpl(days, users, auth);
         service = new AppointmentCommandServiceImpl(patients, auth, appointments,
                 mock(TreatmentRepository.class), mock(MedicalHistoryRepository.class), businessHours);
+        service.useClock(java.time.Clock.fixed(java.time.Instant.parse("2026-11-26T13:00:00Z"),
+                com.platform.dentify.shared.domain.model.valueobjects.BusinessTime.ZONE));
     }
 
     private static UpdateBusinessHoursCommand mondayToFriday(LocalTime opens, LocalTime closes) {

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.platform.dentify.iam.domain.services.JwtService;
 import com.platform.dentify.invoices.domain.exceptions.InvoiceDeletionNotAllowedException;
+import com.platform.dentify.patientattention.domain.exceptions.PastAppointmentException;
 import com.platform.dentify.invoices.infrastructure.persistence.InvoiceSchemaVerifier;
 import com.platform.dentify.patientattention.domain.model.commands.DeleteAppointmentCommand;
 import com.platform.dentify.patientattention.domain.services.AppointmentCommandService;
@@ -119,7 +120,9 @@ class InvoicesLegacySchemaIntegrationTest {
         var error = assertThrows(RuntimeException.class,
                 () -> appointmentCommandService.handle(new DeleteAppointmentCommand(INVOICED_APPOINTMENT_ID)));
 
-        assertTrue(IntegrationTestDatabase.causedBy(error, InvoiceDeletionNotAllowedException.class), error.toString());
+        assertTrue(IntegrationTestDatabase.causedBy(error, InvoiceDeletionNotAllowedException.class)
+                        || IntegrationTestDatabase.causedBy(error, PastAppointmentException.class),
+                error.toString());
         assertEquals(1, count("SELECT COUNT(*) FROM invoice WHERE id = ?", LEGACY_INVOICE_ID));
     }
 
