@@ -1,6 +1,8 @@
 package com.platform.dentify.patientattention.interfaces.rest;
 
 
+import com.platform.dentify.patientattention.domain.exceptions.MedicalHistoryAlreadyAnnulledException;
+import com.platform.dentify.patientattention.domain.model.commands.AnnulMedicalHistoryCommand;
 import com.platform.dentify.patientattention.domain.model.commands.CreateMedicalHistoryCommand;
 import com.platform.dentify.patientattention.domain.model.commands.CreatePatientCommand;
 import com.platform.dentify.patientattention.domain.model.commands.DeletePatientCommand;
@@ -203,6 +205,36 @@ public class PatientController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Error: " + e.getMessage());
         }
 
+    }
+
+    @PatchMapping("/{patientId}/medical-histories/{medicalHistoryId}/annul")
+    @Operation(summary = "Annul a medical history entry",
+            description = "Marks the entry as annulled with a mandatory reason; the entry is kept and stays visible")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Medical history entry annulled"),
+            @ApiResponse(responseCode = "400", description = "Missing or too long reason"),
+            @ApiResponse(responseCode = "404", description = "Entry not found for this patient and user"),
+            @ApiResponse(responseCode = "409", description = "Entry already annulled")
+    })
+    public ResponseEntity<?> annulMedicalHistory(
+            @PathVariable Long patientId,
+            @PathVariable Long medicalHistoryId,
+            @RequestBody(required = false) AnnulMedicalHistoryResource resource
+    ) {
+        try {
+            String reason = resource == null ? null : resource.reason();
+            var result = medicalHistoryCommandService.handle(
+                    new AnnulMedicalHistoryCommand(patientId, medicalHistoryId, reason));
+            if (result.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(Map.of("error", "La entrada de la historia clínica no existe"));
+            }
+            return ResponseEntity.ok(MedicalResourceFromEntityAssembler.toResourceFromEntity(result.get()));
+        } catch (MedicalHistoryAlreadyAnnulledException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", e.getMessage()));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", e.getMessage()));
+        }
     }
 
 }

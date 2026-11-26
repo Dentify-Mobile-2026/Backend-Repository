@@ -12,6 +12,9 @@ public class MedicalResourceFromEntityAssembler {
                 entity.getMedication().medication(),
                 entity.getCreatedAt(),
                 entity.getAppointmentDate(),
-                entity.getSourceAppointmentId());
+                entity.getSourceAppointmentId(),
+                entity.isAnnulled(),
+                entity.getAnnulmentReason(),
+                entity.getAnnulledAt());
     }
 }
