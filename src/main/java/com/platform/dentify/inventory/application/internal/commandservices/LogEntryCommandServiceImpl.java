@@ -6,7 +6,9 @@ import com.platform.dentify.inventory.domain.model.commands.CreateLogEntryComman
 import com.platform.dentify.inventory.domain.services.LogEntryCommandService;
 import com.platform.dentify.inventory.infrastructure.persistence.jpa.repositories.ItemRepository;
 import com.platform.dentify.inventory.infrastructure.persistence.jpa.repositories.LogEntryRepository;
+import com.platform.dentify.invoices.infrastructure.repositories.InvoiceRepository;
 import jakarta.transaction.Transactional;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -15,13 +17,23 @@ public class LogEntryCommandServiceImpl implements LogEntryCommandService {
     private final LogEntryRepository logEntryRepository;
     private final ItemRepository itemRepository;
     private final AuthenticatedUserProvider authenticatedUserProvider;
+    private final InvoiceRepository invoiceRepository;
+
+    @Autowired
+    public LogEntryCommandServiceImpl(LogEntryRepository logEntryRepository,
+                                      ItemRepository itemRepository,
+                                      AuthenticatedUserProvider authenticatedUserProvider,
+                                      InvoiceRepository invoiceRepository) {
+        this.logEntryRepository = logEntryRepository;
+        this.itemRepository = itemRepository;
+        this.authenticatedUserProvider = authenticatedUserProvider;
+        this.invoiceRepository = invoiceRepository;
+    }
 
     public LogEntryCommandServiceImpl(LogEntryRepository logEntryRepository,
                                       ItemRepository itemRepository,
                                       AuthenticatedUserProvider authenticatedUserProvider) {
-        this.logEntryRepository = logEntryRepository;
-        this.itemRepository = itemRepository;
-        this.authenticatedUserProvider = authenticatedUserProvider;
+        this(logEntryRepository, itemRepository, authenticatedUserProvider, null);
     }
 
     @Override
@@ -41,9 +53,15 @@ public class LogEntryCommandServiceImpl implements LogEntryCommandService {
             throw new IllegalArgumentException("Quantity exceeded");
         }
 
+        // US27: el consumo queda ligado al comprobante de la atención, que debe ser del mismo consultorio.
+        var invoice = invoiceRepository == null ? null
+                : invoiceRepository.findByIdAndAppointment_Patient_User_Id(command.invoiceId(), userId)
+                        .orElseThrow(() -> new IllegalArgumentException("Invalid invoice id"));
+
         int newStock = previousStock - command.consumedQuantity();
         var logEntry = new LogEntry(command);
         logEntry.setItem(item);
+        logEntry.setInvoice(invoice);
         logEntry.setPreviousStock(previousStock);
         logEntry.setNewStock(newStock);
         logEntry.setReason("Consumo registrado");

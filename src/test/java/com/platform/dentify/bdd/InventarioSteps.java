@@ -62,5 +62,7 @@ public class InventarioSteps {
                 + " && @.previousStock == " + antes + " && @.newStock == " + despues + ")]");
         assertThat(consumos).hasSize(1);
         assertThat(consumos.get(0)).containsEntry("consumedQuantity", antes - despues);
+        // US27: el movimiento guarda el comprobante de la atención.
+        assertThat(consumos.get(0)).containsEntry("invoiceId", api.id("comprobante").intValue());
     }
 }
