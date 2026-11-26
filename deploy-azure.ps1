@@ -16,10 +16,18 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$DbPassword,
     [string]$SwaggerEnabled = "true",
+    # Origenes del navegador que pueden llamar a la API (CORS), separados por coma. Vacio = valor
+    # por defecto: la web y la landing (GitHub Pages), el propio servicio (Swagger) y localhost
+    # para desarrollo. La app Android no usa CORS. Use "*" solo para pruebas puntuales.
+    [string]$CorsAllowedOrigins = "",
     [string]$JwtSecret = (-join ((48..57) + (65..90) + (97..122) | Get-Random -Count 48 | ForEach-Object { [char]$_ }))
 )
 
 $ErrorActionPreference = "Continue"
+
+if (-not $CorsAllowedOrigins) {
+    $CorsAllowedOrigins = "https://dentify-mobile-2026.github.io,https://$AppName.azurewebsites.net,http://localhost:[*],http://127.0.0.1:[*]"
+}
 
 function Invoke-Step {
     param(
@@ -74,7 +82,7 @@ try {
         JWT_SECRET           = $JwtSecret
         PORT                 = "8080"
         WEBSITES_PORT        = "8080"
-        CORS_ALLOWED_ORIGINS = "*"
+        CORS_ALLOWED_ORIGINS = $CorsAllowedOrigins
         SWAGGER_ENABLED      = $SwaggerEnabled
     }
     $settingsObj | ConvertTo-Json | Set-Content -Path $settingsPath -Encoding UTF8

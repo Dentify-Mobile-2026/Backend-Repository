@@ -9,6 +9,7 @@ import com.platform.dentify.patientattention.domain.model.commands.UpdateAppoint
 import com.platform.dentify.patientattention.domain.model.commands.UpdateAppointmentStatusCommand;
 import com.platform.dentify.patientattention.domain.model.valueobjects.AppointmentStatus;
 import com.platform.dentify.patientattention.domain.services.AppointmentCommandService;
+import com.platform.dentify.patientattention.domain.services.BusinessHoursService;
 import com.platform.dentify.patientattention.infrastructure.repositories.AppointmentRepository;
 import com.platform.dentify.patientattention.infrastructure.repositories.PatientRepository;
 import com.platform.dentify.patientattention.infrastructure.repositories.TreatmentRepository;
@@ -31,6 +32,7 @@ public class AppointmentCommandServiceImpl implements AppointmentCommandService 
     private final AppointmentRepository appointmentRepository;
     private final TreatmentRepository treatmentRepository;
     private final MedicalHistoryRepository medicalHistoryRepository;
+    private final BusinessHoursService businessHoursService;
 
     @Autowired
     public AppointmentCommandServiceImpl(
@@ -38,13 +40,26 @@ public class AppointmentCommandServiceImpl implements AppointmentCommandService 
             AuthenticatedUserProvider authenticatedUserProvider,
             AppointmentRepository appointmentRepository,
             TreatmentRepository treatmentRepository,
-            MedicalHistoryRepository medicalHistoryRepository
+            MedicalHistoryRepository medicalHistoryRepository,
+            BusinessHoursService businessHoursService
     ) {
         this.patientRepository = patientRepository;
         this.authenticatedUserProvider = authenticatedUserProvider;
         this.appointmentRepository = appointmentRepository;
         this.treatmentRepository = treatmentRepository;
         this.medicalHistoryRepository = medicalHistoryRepository;
+        this.businessHoursService = businessHoursService;
+    }
+
+    public AppointmentCommandServiceImpl(
+            PatientRepository patientRepository,
+            AuthenticatedUserProvider authenticatedUserProvider,
+            AppointmentRepository appointmentRepository,
+            TreatmentRepository treatmentRepository,
+            MedicalHistoryRepository medicalHistoryRepository
+    ) {
+        this(patientRepository, authenticatedUserProvider, appointmentRepository,
+                treatmentRepository, medicalHistoryRepository, null);
     }
 
     public AppointmentCommandServiceImpl(
@@ -64,6 +79,7 @@ public class AppointmentCommandServiceImpl implements AppointmentCommandService 
             return Optional.empty();
         }
 
+        assertWithinBusinessHours(userId, command._appointmentDate(), command._duration());
         assertNoScheduleConflict(userId, command._appointmentDate(), command._duration(), null);
 
         var appointment = new Appointment(command);
@@ -91,6 +107,13 @@ public class AppointmentCommandServiceImpl implements AppointmentCommandService 
         Appointment appointment = appointmentRepository.findByIdAndPatient_User_Id(command.id(), userId)
                 .orElseThrow(() -> new IllegalArgumentException("Appointment not found or does not belong to the user"));
 
+        // El horario solo se exige si la cita cambia de hora o de duración: editar el motivo de una
+        // cita antigua no debe fallar porque el consultorio cambió su horario después.
+        boolean rescheduled = !command._appointmentDate().equals(appointment.getAppointmentDate())
+                || !command._duration().equals(appointment.getDuration());
+        if (rescheduled) {
+            assertWithinBusinessHours(userId, command._appointmentDate(), command._duration());
+        }
         assertNoScheduleConflict(userId, command._appointmentDate(), command._duration(), appointment.getId());
 
         appointment.setAppointmentDate(command._appointmentDate());
@@ -154,6 +177,13 @@ public class AppointmentCommandServiceImpl implements AppointmentCommandService 
         }
 
         appointmentRepository.deleteById(command.id());
+    }
+
+    /** Rechaza la cita si cae fuera del horario de atención del consultorio (US09). */
+    private void assertWithinBusinessHours(Long userId, LocalDateTime start, LocalTime duration) {
+        if (businessHoursService != null) {
+            businessHoursService.assertWithinBusinessHours(userId, start, duration);
+        }
     }
 
     /**
