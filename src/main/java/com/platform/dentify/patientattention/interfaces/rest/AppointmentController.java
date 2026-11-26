@@ -1,6 +1,7 @@
 package com.platform.dentify.patientattention.interfaces.rest;
 
 import com.platform.dentify.patientattention.domain.exceptions.AppointmentConflictException;
+import com.platform.dentify.patientattention.domain.exceptions.AppointmentOutsideBusinessHoursException;
 import com.platform.dentify.patientattention.domain.model.commands.CreateAppointmentCommand;
 import com.platform.dentify.patientattention.domain.model.commands.DeleteAppointmentCommand;
 import com.platform.dentify.patientattention.domain.model.queries.GetAllAppointmentsByPatientAndUserIdQuery;
@@ -101,7 +102,7 @@ public class AppointmentController {
     @ApiResponses(value = {
             @ApiResponse(responseCode = "201", description = "appointment created"),
             @ApiResponse(responseCode = "400", description = "appointment not created"),
-            @ApiResponse(responseCode = "409", description = "The time overlaps with another appointment")
+            @ApiResponse(responseCode = "409", description = "The time overlaps with another appointment or is outside business hours")
     })
     public ResponseEntity<?> createAppointment(@RequestBody CreateAppointmentResource resource) {
         try {
@@ -116,6 +117,9 @@ public class AppointmentController {
 
             return ResponseEntity.status(HttpStatus.CREATED).body(appointmentResource);
 
+        } catch (AppointmentOutsideBusinessHoursException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("error", e.getMessage(), "code", AppointmentOutsideBusinessHoursException.CODE));
         } catch (AppointmentConflictException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", e.getMessage()));
         } catch (Exception E) {
@@ -129,7 +133,7 @@ public class AppointmentController {
             @ApiResponse(responseCode = "200", description = "Appointment updated successfully"),
             @ApiResponse(responseCode = "400", description = "Invalid request"),
             @ApiResponse(responseCode = "404", description = "Appointment not found"),
-            @ApiResponse(responseCode = "409", description = "The time overlaps with another appointment")
+            @ApiResponse(responseCode = "409", description = "The time overlaps with another appointment or is outside business hours")
     })
     public ResponseEntity<?> updateAppointment(
             @PathVariable Long appointmentId,
@@ -145,6 +149,9 @@ public class AppointmentController {
             AppointmentResource updatedResource = AppointmentResourceFromEntityAssembler.toResourceFromEntity(result.get());
             return ResponseEntity.ok(updatedResource);
 
+        } catch (AppointmentOutsideBusinessHoursException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("error", e.getMessage(), "code", AppointmentOutsideBusinessHoursException.CODE));
         } catch (AppointmentConflictException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", e.getMessage()));
         } catch (Exception e) {
