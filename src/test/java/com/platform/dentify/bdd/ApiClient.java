@@ -73,6 +73,10 @@ public class ApiClient {
         return send(HttpMethod.PATCH, url, payload);
     }
 
+    public ApiClient delete(String url) {
+        return send(HttpMethod.DELETE, url, null);
+    }
+
     private ApiClient send(HttpMethod method, String url, Object payload) {
         try {
             MockHttpServletRequestBuilder req = request(method, url).accept(MediaType.APPLICATION_JSON);

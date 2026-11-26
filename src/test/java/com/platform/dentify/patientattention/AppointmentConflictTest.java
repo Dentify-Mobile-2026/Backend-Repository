@@ -46,6 +46,9 @@ class AppointmentConflictTest {
         when(userProvider.getCurrentUserId()).thenReturn(USER_ID);
         when(patientRepository.findByIdAndUser_Id(PATIENT_ID, USER_ID)).thenReturn(Optional.of(new Patient()));
         service = new AppointmentCommandServiceImpl(patientRepository, userProvider, appointmentRepository);
+        // Hora fija anterior a las citas de la prueba: así siguen siendo futuras cualquier día.
+        service.useClock(java.time.Clock.fixed(java.time.Instant.parse("2026-11-26T13:00:00Z"),
+                com.platform.dentify.shared.domain.model.valueobjects.BusinessTime.ZONE));
     }
 
     /** Cita existente de 9:00 a 10:00. */

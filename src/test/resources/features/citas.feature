@@ -1,5 +1,5 @@
 # language: es
-Característica: Citas sin cruces y dentro del horario de atención (US04 a US09, US42, US43, US45, US55, US56)
+Característica: Citas sin cruces, dentro del horario y protegidas una vez pasadas (US04 a US09, US42, US43, US45, US55, US56)
   Como personal del consultorio
   quiero agendar citas que no se crucen y que respeten el horario de atención
   para no perder pacientes por reprogramaciones.
@@ -42,3 +42,27 @@ Característica: Citas sin cruces y dentro del horario de atención (US04 a US09
     Cuando marco la cita como atendida con la nota "Limpieza sin complicaciones"
     Entonces la respuesta es 200
     Y la cita queda en estado "COMPLETED"
+
+  Escenario: Eliminar una cita futura
+    Dado que tengo una cita el "2027-03-01" a las "10:00" por "01:00"
+    Cuando elimino la cita
+    Entonces la respuesta es 200
+
+  Escenario: No se puede reprogramar una cita pasada
+    Dado que tengo una cita el "2026-01-05" a las "10:00" por "01:00"
+    Cuando reprogramo la cita al "2027-03-01" a las "11:00"
+    Entonces la respuesta es 409
+    Y el código de error es "PAST_APPOINTMENT"
+
+  Escenario: No se puede eliminar una cita pasada
+    Dado que tengo una cita el "2026-01-05" a las "10:00" por "01:00"
+    Cuando elimino la cita
+    Entonces la respuesta es 409
+    Y el código de error es "PAST_APPOINTMENT"
+
+  Escenario: Una cita atendida no vuelve a agendada
+    Dado que tengo una cita el "2027-03-01" a las "10:00" por "01:00"
+    Y que la cita está atendida
+    Cuando intento volver la cita a agendada
+    Entonces la respuesta es 400
+    Y el mensaje de error es "Una cita atendida no puede cambiar de estado."

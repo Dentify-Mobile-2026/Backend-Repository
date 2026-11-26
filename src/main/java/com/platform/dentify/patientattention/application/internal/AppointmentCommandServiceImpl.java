@@ -2,6 +2,7 @@ package com.platform.dentify.patientattention.application.internal;
 
 import com.platform.dentify.iam.infrastructure.security.AuthenticatedUserProvider;
 import com.platform.dentify.patientattention.domain.exceptions.AppointmentConflictException;
+import com.platform.dentify.patientattention.domain.exceptions.PastAppointmentException;
 import com.platform.dentify.patientattention.domain.model.aggregates.Appointment;
 import com.platform.dentify.patientattention.domain.model.commands.CreateAppointmentCommand;
 import com.platform.dentify.patientattention.domain.model.commands.DeleteAppointmentCommand;
@@ -20,6 +21,9 @@ import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import com.platform.dentify.shared.domain.model.valueobjects.BusinessTime;
+
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Optional;
@@ -33,6 +37,7 @@ public class AppointmentCommandServiceImpl implements AppointmentCommandService 
     private final TreatmentRepository treatmentRepository;
     private final MedicalHistoryRepository medicalHistoryRepository;
     private final BusinessHoursService businessHoursService;
+    private Clock clock = Clock.system(BusinessTime.ZONE);
 
     @Autowired
     public AppointmentCommandServiceImpl(
@@ -107,6 +112,8 @@ public class AppointmentCommandServiceImpl implements AppointmentCommandService 
         Appointment appointment = appointmentRepository.findByIdAndPatient_User_Id(command.id(), userId)
                 .orElseThrow(() -> new IllegalArgumentException("Appointment not found or does not belong to the user"));
 
+        assertNotStarted(appointment, "reprogramar");
+
         // El horario solo se exige si la cita cambia de hora o de duración: editar el motivo de una
         // cita antigua no debe fallar porque el consultorio cambió su horario después.
         boolean rescheduled = !command._appointmentDate().equals(appointment.getAppointmentDate())
@@ -137,6 +144,12 @@ public class AppointmentCommandServiceImpl implements AppointmentCommandService 
 
         Appointment appointment = appointmentOpt.get();
         AppointmentStatus newStatus = AppointmentStatus.valueOf(command.status().trim().toUpperCase());
+        // US43: una cita atendida no vuelve a agendada ni a ningún otro estado.
+        boolean attended = Boolean.TRUE.equals(appointment.getCompleted())
+                || appointment.getStatus() == AppointmentStatus.COMPLETED;
+        if (attended && newStatus != AppointmentStatus.COMPLETED) {
+            throw new IllegalArgumentException("Una cita atendida no puede cambiar de estado.");
+        }
         if (newStatus == AppointmentStatus.IN_PROGRESS
                 && appointment.getAppointmentDate() != null
                 && LocalDateTime.now(com.platform.dentify.shared.domain.model.valueobjects.BusinessTime.ZONE)
@@ -171,12 +184,27 @@ public class AppointmentCommandServiceImpl implements AppointmentCommandService 
     @Transactional
     public void handle(DeleteAppointmentCommand command) {
         Long userId = authenticatedUserProvider.getCurrentUserId();
-        boolean exists = appointmentRepository.existsByIdAndPatient_User_Id(command.id(), userId);
-        if (!exists) {
-            throw new IllegalArgumentException("Appointment not found or does not belong to the user");
-        }
+        var appointment = appointmentRepository.findByIdAndPatient_User_Id(command.id(), userId)
+                .orElseThrow(() -> new IllegalArgumentException("Appointment not found or does not belong to the user"));
+        assertNotStarted(appointment, "eliminar");
 
         appointmentRepository.deleteById(command.id());
+    }
+
+    /** Permite fijar la hora en las pruebas; en producción se usa la hora de Lima. */
+    public void useClock(Clock clock) {
+        this.clock = clock;
+    }
+
+    /**
+     * US05 y US07: una cita que ya empezó no se reprograma ni se elimina. Su estado y su nota de
+     * evolución sí se pueden actualizar.
+     */
+    private void assertNotStarted(Appointment appointment, String action) {
+        if (appointment.getAppointmentDate() != null
+                && !appointment.getAppointmentDate().isAfter(LocalDateTime.now(clock))) {
+            throw new PastAppointmentException("No se puede " + action + " una cita que ya pasó.");
+        }
     }
 
     /** Rechaza la cita si cae fuera del horario de atención del consultorio (US09). */
